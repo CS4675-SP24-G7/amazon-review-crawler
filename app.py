@@ -135,13 +135,7 @@ def api_review():
     Insert_Status(ISBN, Status.COMPLETED, str(end),
                   f'{end - start:.2f} seconds', '', '', '', '', '', '')
 
-    return to_json({
-        'url': url,
-        'isbn': ISBN,
-        'data': 'data/' + ISBN + '.json',
-        'time_taken': f'{end - start:.2f} seconds',
-        'message': 'Data saved successfully',
-    })
+    return Get_Stats(ISBN)
 
 
 @app.route('/get_status')
@@ -206,3 +200,8 @@ def api(url, user_agent):
         except Exception as e:
             return to_json({'error': str(e)}, 400)
     return to_json({'error': 'URL to scrape is not provided'}, 400)
+
+
+if __name__ == '__main__':
+    app.debug = True
+    app.run(host="0.0.0.0", port=8000)
