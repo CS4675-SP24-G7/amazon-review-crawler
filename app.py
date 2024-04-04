@@ -87,9 +87,11 @@ def scrape(url, user_agent):
 def to_json(data, status=200):
     return json.dumps(data, indent=2), status, {'Content-Type': 'application/json; charset=utf-8'}
 
+
 @app.route('/')
 def index():
     return 'Welcome to Amazon Review Scraper API'
+
 
 @app.route('/get_reviews')
 def api_review():
@@ -99,7 +101,8 @@ def api_review():
     url = request.args.get('url', None)
     ISBN = URL_Processor(url, Review_Type.ONE_STAR, 0).Extract_ISBN()
 
-    Insert_Status(ISBN, Status.PROCESSING, str(start), '', '', '', '', '', '', '')
+    Insert_Status(ISBN, Status.PROCESSING, str(
+        start), '', '', '', '', '', '', '')
 
     user_agent = UserAgent().random
 
@@ -129,7 +132,8 @@ def api_review():
     # end timer
     end = time.time()
 
-    Insert_Status(ISBN, Status.COMPLETED, str(end), f'{end - start:.2f} seconds', '', '', '', '', '', '')
+    Insert_Status(ISBN, Status.COMPLETED, str(end),
+                  f'{end - start:.2f} seconds', '', '', '', '', '', '')
 
     return to_json({
         'url': url,
@@ -138,6 +142,53 @@ def api_review():
         'time_taken': f'{end - start:.2f} seconds',
         'message': 'Data saved successfully',
     })
+
+
+@app.route('/get_status')
+def api_status():
+    ISBN = request.args.get('isbn', None)
+    status = Get_Status(ISBN)
+    if status == Status.NOT_FOUND.name:
+        return to_json({'error': 'ISBN not found'}, 400)
+    return to_json({
+        'isbn': ISBN,
+        'status': status,
+    })
+
+
+@app.route('/get_stats')
+def api_stats():
+    ISBN = request.args.get('isbn', None)
+    status = Get_Status(ISBN)
+    if status == Status.NOT_FOUND.name:
+        return to_json({'error': 'ISBN not found'}, 400)
+    if status == Status.FAILED.name:
+        return to_json({'error': 'Data extraction failed'}, 400)
+    if status == Status.PROCESSING.name:
+        return to_json({'error': 'Data extraction in progress'}, 400)
+    if status == Status.COMPLETED.name:
+        stats = Get_Stats(ISBN)
+        return to_json(stats)
+
+
+@app.route('/get_data')
+def api_data():
+    ISBN = request.args.get('isbn', None)
+    status = Get_Status(ISBN)
+    if status == Status.NOT_FOUND.name:
+        return to_json({'error': 'ISBN not found'}, 400)
+    if status == Status.FAILED.name:
+        return to_json({'error': 'Data extraction failed'}, 400)
+    if status == Status.PROCESSING.name:
+        return to_json({'error': 'Data extraction in progress'}, 400)
+    if status == Status.COMPLETED.name:
+        try:
+            with open(f'./data/{ISBN}.json', 'r') as f:
+                data = json.load(f)
+                f.close()
+            return to_json(data)
+        except Exception as e:
+            return to_json({'error': str(e)}, 400)
 
 
 def api(url, user_agent):
