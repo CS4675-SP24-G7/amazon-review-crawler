@@ -1,5 +1,5 @@
-flask
-selectorlib
-requests
-json
-dateutil
+flask==3.0.2
+selectorlib==0.16.0
+requests==2.31.0
+python-dateutil==2.9.0.post0
+fake-useragent==1.5.1
