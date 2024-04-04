@@ -22,8 +22,8 @@ jobs:
 
             - name: Build and push Backend docker image
               run: |
-                  docker build -t us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/testing:latest .
-                  docker push us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/testing:latest
+                  docker build -t us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest .
+                  docker push us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest
 
     deploy:
         runs-on: ubuntu-latest
@@ -40,4 +40,4 @@ jobs:
                   project_id: ${{ secrets.PROJECT_ID }}
                   service: "${{ secrets.PROJECT_SERVICE }}"
                   region: "us-east1"
-                  image: "us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/testing:latest"
+                  image: "us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest"
