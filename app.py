@@ -12,15 +12,16 @@ app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('selectors.yml')
 
 
-def scrape(url):
+def scrape(url, user_agent):
     headers = {
         'authority': 'www.amazon.com',
         'pragma': 'no-cache',
         'cache-control': 'no-cache',
         'dnt': '1',
         'upgrade-insecure-requests': '1',
-        # 'user-agent': UserAgent().random,
-        'user-agent': 'Mozilla/5.0 (X11; CrOS x86_64 8172.45.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.64 Safari/537.36',
+        # 'user-agent': user_agent,
+        # 'user-agent': 'Mozilla/5.0 (X11; CrOS x86_64 8172.45.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.64 Safari/537.36',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0',
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'sec-fetch-site': 'none',
         'sec-fetch-mode': 'navigate',
@@ -94,13 +95,15 @@ def api_review():
     url = request.args.get('url', None)
     ISBN = None
 
+    user_agent = UserAgent().firefox
+
     for review_type in Review_Type:
         for i in range(1, 11):
             url_processor = URL_Processor(url, review_type, i)
             try:
                 ISBN = url_processor.Extract_ISBN()
                 review_url = url_processor.Compose_Review_URL()
-                data = api(review_url)
+                data = api(review_url, user_agent)
 
                 # check if json has error key
                 if 'error' in json.loads(data[0]):
@@ -129,7 +132,7 @@ def api_review():
     })
 
 
-def api(url):
+def api(url, user_agent):
     if request.args.get('pageNumber', None) is None:
         url += '&pageNumber=1'
     elif int(request.args.get('pageNumber', None)) <= 10:
@@ -139,7 +142,7 @@ def api(url):
 
     if url:
         try:
-            data = scrape(url)
+            data = scrape(url, user_agent)
             return to_json(data)
         except Exception as e:
             return to_json({'error': str(e)}, 400)
