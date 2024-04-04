@@ -114,6 +114,9 @@ def api_review():
             except Exception as e:
                 return to_json({'error': str(e)}, 400)
 
+    # join all json files
+    Join_JSON(ISBN)
+
     # end timer
     end = time.time()
 
