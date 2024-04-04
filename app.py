@@ -4,9 +4,10 @@ import selectorlib
 import requests
 import json
 from dateutil import parser as dateparser
-from url_extractor import Review_Type, URL_Processor
+from url_extractor import *
 from fake_useragent import UserAgent
 from utils import Join_JSON
+from db_adapter import *
 
 app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('selectors.yml')
@@ -86,16 +87,21 @@ def scrape(url, user_agent):
 def to_json(data, status=200):
     return json.dumps(data, indent=2), status, {'Content-Type': 'application/json; charset=utf-8'}
 
-
 @app.route('/')
+def index():
+    return 'Welcome to Amazon Review Scraper API'
+
+@app.route('/get_reviews')
 def api_review():
     # set up timer
     start = time.time()
 
     url = request.args.get('url', None)
-    ISBN = None
+    ISBN = URL_Processor(url, Review_Type.ONE_STAR, 0).Extract_ISBN()
 
-    user_agent = UserAgent().firefox
+    Insert_Status(ISBN, Status.PROCESSING, str(start), '', '', '', '', '', '', '')
+
+    user_agent = UserAgent().random
 
     for review_type in Review_Type:
         for i in range(1, 11):
@@ -122,6 +128,8 @@ def api_review():
 
     # end timer
     end = time.time()
+
+    Insert_Status(ISBN, Status.COMPLETED, str(end), f'{end - start:.2f} seconds', '', '', '', '', '', '')
 
     return to_json({
         'url': url,
