@@ -33,10 +33,11 @@ class Firebase:
         #     "universe_domain": original_service_key["universe_domain"]
         # }
 
-        with open("cred/firebase-admin.json", "rb") as read_file:
-            data = json.load(read_file)
+        config = open('cred/firebase-admin.json', 'r', encoding='utf-8')
 
-        cred = firebase_admin.credentials.Certificate(data)
+        config_data = json.load(config)
+
+        cred = firebase_admin.credentials.Certificate(config_data)
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://cs4675-cpfs-default-rtdb.firebaseio.com/'
         })
