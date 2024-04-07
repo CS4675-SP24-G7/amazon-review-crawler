@@ -20,6 +20,22 @@ jobs:
             - name: Configure docker
               run: gcloud auth configure-docker us-east1-docker.pkg.dev
 
+            - name: create-json firebase-admin.json
+              id: create-json
+              uses: jsdaniell/create-json@v1.2.3
+              with:
+                  name: "firebase-admin.json"
+                  json: ${{ secrets.FIREBASE_CREDENTIAL }}
+                  dir: "cred/"
+
+            - name: create-json cookies.json
+              id: create-json-1
+              uses: jsdaniell/create-json@v1.2.3
+              with:
+                  name: "cookies.json"
+                  json: ${{ secrets.COOKIES }}
+                  dir: "cred/"
+
             - name: Build and push Backend docker image
               uses: docker/build-push-action@v2
               with:
