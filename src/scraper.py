@@ -1,7 +1,4 @@
-import base64
-import os
 import time
-from flask import Flask, request
 import selectorlib
 import requests
 import json
@@ -10,10 +7,8 @@ from src.url_extractor import *
 from src.Shared import Status, Review_Type
 import src.firebase as firebase
 import threading
-from dotenv import find_dotenv, load_dotenv
 
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
-load_dotenv()
 
 
 def scrape(url):
@@ -32,29 +27,6 @@ def scrape(url):
         'sec-fetch-dest': 'document',
         'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
     }
-
-    # Download the page using requests
-
-    # load_dotenv(find_dotenv())
-    # encoded_key = os.getenv("COOKIES")
-    # encoded_key = str(encoded_key)[2:-1]
-    # original_cookies = json.loads(
-    #     base64.b64decode(encoded_key).decode('utf-8'))
-
-    # cookies = {
-    #     "session-id": original_cookies["session-id"],
-    #     "ubid-main": original_cookies["ubid-main"],
-    #     "asddfawrfaqsdlist": original_cookies["asddfawrfaqsdlist"],
-    #     "x-main": original_cookies["x-main"],
-    #     "at-main": original_cookies["at-main"],
-    #     "sess-at-main": original_cookies["sess-at-main"],
-    #     "sst-main": original_cookies["sst-main"],
-    #     "lc-main": original_cookies["lc-main"],
-    #     "session-id-time": original_cookies["session-id-time"],
-    #     "i18n-prefs": original_cookies["i18n-prefs"],
-    #     "session-token": original_cookies["session-token"],
-    #     "csm-hit": original_cookies["csm-hit"]
-    # }
 
     # load cookies.json from /cred folder
     with open('cred/cookies.json') as f:
@@ -178,108 +150,3 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
     })
 
     return TEMP_DATA
-
-# def api_review(force, url, url_root, firebase):
-#     global Firebase
-#     Firebase = firebase
-
-#     # set up timer
-#     start = time.time()
-
-#     TEMP_DATA = {
-#         "ibsn": "",
-#         "last_update": "",
-#         "time_taken": 0,
-#         "product_title": "",
-#         "product_url": "",
-#         "review_url": "",
-#         "data": {
-#                 Review_Type.ONE_STAR.name: [],
-#                 Review_Type.TWO_STAR.name: [],
-#                 Review_Type.THREE_STAR.name: [],
-#                 Review_Type.FOUR_STAR.name: [],
-#                 Review_Type.FIVE_STAR.name: []
-#         }
-#     }
-
-#     for review_type in Review_Type:
-#         for i in range(1, 11):
-#             url_processor = URL_Processor(url, review_type, i)
-#             try:
-#                 ISBN = url_processor.Extract_ISBN()
-
-#                 if force is False and Firebase.Get_Status(ISBN)['status'] == Status.COMPLETED.name:
-#                     return Firebase.Get_Review(ISBN)
-
-#                 if TEMP_DATA['ibsn'] == "":
-#                     TEMP_DATA['ibsn'] = ISBN
-#                     Firebase.Remove_Review(ISBN)
-#                     Firebase.Remove_Status(ISBN)
-#                     Firebase.Set_Status(
-#                         ISBN,
-#                         Status.PROCESSING,
-#                         {"start_time": str(start)})
-#                 if TEMP_DATA['product_url'] == "":
-#                     TEMP_DATA['product_url'] = f"https://www.amazon.com/dp/{ISBN}"
-#                 if TEMP_DATA['review_url'] == "":
-#                     TEMP_DATA['review_url'] = f"{url_root}get_data?isbn={ISBN}"
-
-#                 product_review_url = url_processor.Compose_Review_URL()
-#                 data = decider(product_review_url)
-
-#                 # check if json has error key
-#                 if 'error' in json.loads(data[0]):
-#                     continue
-#                 else:
-#                     data = json.loads(data[0])
-
-#                     if TEMP_DATA['product_title'] == "":
-#                         TEMP_DATA['product_title'] = data['product_title']
-#                         Firebase.Set_Status(
-#                             ISBN,
-#                             None,
-#                             {"product_title": data['product_title']}
-#                         )
-
-#                     TEMP_DATA['data'][review_type.name] += data['reviews']
-
-#             except Exception as e:
-#                 return to_json({'error': str(e)}, 400)
-
-#     # end timer
-#     end = time.time()
-
-#     if TEMP_DATA["time_taken"] == 0:
-#         TEMP_DATA["time_taken"] = f'{end - start:.2f} seconds'
-
-#     if TEMP_DATA["last_update"] == "":
-#         TEMP_DATA["last_update"] = str(end)
-
-#     Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP_DATA['ibsn']}", TEMP_DATA)
-#     Firebase.Set_Status(
-#         TEMP_DATA['ibsn'],
-#         Status.COMPLETED,
-#         {"last_update": str(end),
-#          "time_taken": TEMP_DATA["time_taken"],
-#          Review_Type.ONE_STAR.name: len(TEMP_DATA['data'][Review_Type.ONE_STAR.name]),
-#          Review_Type.TWO_STAR.name: len(TEMP_DATA['data'][Review_Type.TWO_STAR.name]),
-#          Review_Type.THREE_STAR.name: len(TEMP_DATA['data'][Review_Type.THREE_STAR.name]),
-#          Review_Type.FOUR_STAR.name: len(TEMP_DATA['data'][Review_Type.FOUR_STAR.name]),
-#          Review_Type.FIVE_STAR.name: len(TEMP_DATA['data'][Review_Type.FIVE_STAR.name]), }
-#     )
-
-#     # return Firebase.Get_Status(ISBN)
-#     return Firebase.Get_Review(ISBN)
-
-
-# def decider(url):
-#     if request.args.get('pageNumber', None) is not None and int(request.args.get('pageNumber', None)) > 10:
-#         return to_json({'error': 'Page number should be less than or equal to 10'}, 400)
-
-#     if url:
-#         try:
-#             data = scrape(url)
-#             return to_json(data)
-#         except Exception as e:
-#             return to_json({'error': str(e)}, 400)
-#     return to_json({'error': 'URL to scrape is not provided'}, 400)

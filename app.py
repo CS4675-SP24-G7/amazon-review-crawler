@@ -1,11 +1,5 @@
-import os
-import threading
-import time
 from flask import Flask, jsonify, request
 import selectorlib
-import requests
-import json
-from dateutil import parser as dateparser
 from src.url_extractor import *
 from src.Shared import Status, Review_Type
 import src.firebase as firebase
@@ -20,13 +14,6 @@ Firebase = firebase.Firebase()
 @app.route('/')
 def index():
     return 'Welcome to Amazon Review Scraper API'
-
-
-# @app.route('/get_reviews')
-# def get_reviews():
-#     url = request.args.get('url', None)
-#     force = request.args.get('force', False)
-#     return api_review(force, url, request.url_root, Firebase)
 
 
 @app.route('/get_status')
@@ -74,16 +61,13 @@ def api_data():
 @app.route('/scrape')
 def scrape_handler():
     url = request.args.get('url', None)
-
-    # get force parameter,
-    # if force is True, scrape the data regardless of the status
-    force = request.args.get('force', False)
+    force = request.args.get('force', 'False').lower() == 'true'
 
     url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
     status = Firebase.Get_Status(url_processor.Extract_ISBN())
     data = Firebase.Get_Review(url_processor.Extract_ISBN())
 
-    if not force and status and status['status'] == Status.COMPLETED.name and data:
+    if not force and status['status'] == Status.COMPLETED.name and data:
         return jsonify(data), 200
 
     urls = []

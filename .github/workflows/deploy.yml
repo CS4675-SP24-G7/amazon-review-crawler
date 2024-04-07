@@ -3,7 +3,7 @@ name: Deploying to Cloud Run 0.1
 on:
     push:
         branches:
-            - "firebase"
+            - "main"
 
 jobs:
     build:
@@ -20,24 +20,21 @@ jobs:
             - name: Configure docker
               run: gcloud auth configure-docker us-east1-docker.pkg.dev
 
-            - name: Copy Firebase JSON
+            - name: Generate JSON files
               working-directory: ./
               env:
-                FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}
-                COOKIES_JSON: ${{ secrets.COOKIES_JSON }}
+                  FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}
+                  COOKIES_JSON: ${{ secrets.COOKIES_JSON }}
               run: |
-                mkdir cred
-                echo $FIREBASE_JSON >> ./cred/firebase_key.json
-                echo $COOKIES_JSON >> ./cred/cookies.json
+                  mkdir cred
+                  echo $FIREBASE_JSON >> ./cred/firebase_key.json
+                  echo $COOKIES_JSON >> ./cred/cookies.json
 
             - name: Build and push Backend docker image
               uses: docker/build-push-action@v2
-              with: 
+              with:
                   context: .
                   file: ./Dockerfile
-                  build-args: |
-                      ENV_SERVICE_ACCOUNT_KEY: ${{ secrets.ENV_SERVICE_ACCOUNT_KEY }}
-                      ENV_COOKIES: ${{ secrets.ENV_COOKIES }}
                   push: true
                   tags: us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest
 
