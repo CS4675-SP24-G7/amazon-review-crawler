@@ -6,9 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
-*.json
+firebase-admin.json
 *.sqlite3
 *.db
+
+data/
+temp_data/
 
 # Distribution / packaging
 .Python

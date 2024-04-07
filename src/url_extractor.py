@@ -1,13 +1,5 @@
 import re
-from enum import Enum
-
-
-class Review_Type(Enum):
-    ONE_STAR = 1,
-    TWO_STAR = 2,
-    THREE_STAR = 3,
-    FOUR_STAR = 4,
-    FIVE_STAR = 5
+from src.Shared import Review_Type
 
 
 class URL_Processor():
