@@ -1,7 +1,6 @@
 # ignore data folder
 /data
 /temp_data
-/cred
 .dockerignore
 .DS_Store
 .env
