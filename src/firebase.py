@@ -1,7 +1,7 @@
 import json
 import firebase_admin
 from firebase_admin import db
-from src.Shared import Status, Review_Type
+from Shared import Status, Review_Type
 import os
 
 
@@ -11,7 +11,8 @@ class Firebase:
 
     def __init__(self) -> None:
 
-        cred = firebase_admin.credentials.Certificate("../cred/firebase-admin.json")
+        cred = firebase_admin.credentials.Certificate(
+            "cred/firebase-admin.json")
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://cs4675-cpfs-default-rtdb.firebaseio.com/'
         })
@@ -51,3 +52,6 @@ class Firebase:
 
     def Set_Field(self, path, field, value):
         self.ref.child(path).update({field: value})
+
+
+Firebase = Firebase()
