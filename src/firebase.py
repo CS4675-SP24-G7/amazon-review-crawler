@@ -30,11 +30,11 @@ class Firebase:
     def Set_Status(self, ISBN, status: Status, extra_data):
         if status != None:
             self.ref.child(f"STATUS/{ISBN}").update({"status": status.name})
-        self.ref.child(f"STATUS/{ISBN}").update(extra_data)
+        if extra_data != None:
+            self.ref.child(f"STATUS/{ISBN}").update(extra_data)
 
     def Get_Status(self, ISBN):
         data = self.ref.child(f"COMPLETED/{ISBN}").get()
-        print(data)
         if data is None:
             return {
                 "status": Status.NOT_FOUND.name

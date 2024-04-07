@@ -9,7 +9,7 @@ from dateutil import parser as dateparser
 from src.url_extractor import *
 from src.Shared import Status, Review_Type
 import src.firebase as firebase
-from src.scraper import to_json, api_review, scrape
+from src.scraper import to_json, multi_threaded_scrape
 
 app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
@@ -28,11 +28,11 @@ def index():
     return 'Welcome to Amazon Review Scraper API'
 
 
-@app.route('/get_reviews')
-def get_reviews():
-    url = request.args.get('url', None)
-    force = request.args.get('force', False)
-    return api_review(force, url, request.url_root, Firebase)
+# @app.route('/get_reviews')
+# def get_reviews():
+#     url = request.args.get('url', None)
+#     force = request.args.get('force', False)
+#     return api_review(force, url, request.url_root, Firebase)
 
 
 @app.route('/get_status')
@@ -77,59 +77,28 @@ def api_data():
             return to_json({'error': str(e)}, 400)
 
 
-def scrape_thread(url, result_list):
-    data = scrape(url)
-    if data is None:
-        return
-    result_list.append(data)
-
-
-def multi_threaded_scrape(urls):
-    result_list = []
-    threads = []
-
-    TEMP_DATA = {
-        "ibsn": "",
-        "last_update": "",
-        "time_taken": 0,
-        "product_title": "",
-        "product_url": "",
-        "review_url": "",
-        "data": {
-                Review_Type.ONE_STAR.name: [],
-                Review_Type.TWO_STAR.name: [],
-                Review_Type.THREE_STAR.name: [],
-                Review_Type.FOUR_STAR.name: [],
-                Review_Type.FIVE_STAR.name: []
-        }
-    }
-    
-    for url in urls:
-        thread = threading.Thread(
-            target=scrape_thread, args=(url, result_list))
-        thread.start()
-        threads.append(thread)
-
-    for thread in threads:
-        thread.join()
-
-    return result_list
-
-
 @app.route('/scrape')
 def scrape_handler():
     url = request.args.get('url', None)
+
+    url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+    status = Firebase.Get_Status(url_processor.Extract_ISBN())
+    data = Firebase.Get_Review(url_processor.Extract_ISBN())
+
+    if status and status['status'] == Status.COMPLETED.name and data:
+        return jsonify(data), 200
+
     urls = []
     for review_type in Review_Type:
         for i in range(1, 11):
             url_processor = URL_Processor(url, review_type, i)
             url_processor.Extract_ISBN()
-            urls.append(url_processor.Compose_Review_URL())
+            urls.append(url_processor)
 
     if not urls:
         return jsonify({'error': 'No URLs provided'}), 400
 
-    results = multi_threaded_scrape(urls)
+    results = multi_threaded_scrape(urls, Firebase)
     return jsonify(results), 200
 
 

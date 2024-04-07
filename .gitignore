@@ -6,6 +6,7 @@ __pycache__/
 # C extensions
 *.so
 
+cookies.json
 firebase-admin.json
 *.sqlite3
 *.db

@@ -8,11 +8,9 @@ from dateutil import parser as dateparser
 from src.url_extractor import *
 from src.Shared import Status, Review_Type
 import src.firebase as firebase
+import threading
 
-app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
-
-Firebase = None
 
 
 def scrape(url):
@@ -34,9 +32,9 @@ def scrape(url):
 
     # Download the page using requests
 
-    cookies = {
-        
-    }
+    # read cookies.json file from cred/cookies.json
+    with open('cred/cookies.json') as f:
+        cookies = json.load(f)
 
     r = requests.get(url, headers=headers, cookies=cookies)
     # Simple check to check if page was blocked (Usually 503)
@@ -98,12 +96,24 @@ def to_json(data, status=200):
     return json.dumps(data, indent=2), status, {'Content-Type': 'application/json; charset=utf-8'}
 
 
-def api_review(force, url, url_root, firebase):
-    global Firebase
-    Firebase = firebase
+def scrape_thread(url_processor: URL_Processor, temp_data, Firebase: firebase.Firebase):
+    data = scrape(url_processor.Compose_Review_URL())
+    if data is None:
+        return
 
-    # set up timer
-    start = time.time()
+    Firebase.Set_Status(url_processor.IBSN, Status.PROCESSING, None)
+
+    temp_data['ibsn'] = url_processor.IBSN
+    temp_data['product_title'] = data['product_title']
+    temp_data['product_url'] = f"https://www.amazon.com/dp/{url_processor.IBSN}"
+    temp_data['data'][url_processor.Review_Type.name] += data['reviews']
+
+    # temp_data.append(data)
+
+
+def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
+    start_time = time.time()
+    threads = []
 
     TEMP_DATA = {
         "ibsn": "",
@@ -111,7 +121,6 @@ def api_review(force, url, url_root, firebase):
         "time_taken": 0,
         "product_title": "",
         "product_url": "",
-        "review_url": "",
         "data": {
                 Review_Type.ONE_STAR.name: [],
                 Review_Type.TWO_STAR.name: [],
@@ -121,84 +130,132 @@ def api_review(force, url, url_root, firebase):
         }
     }
 
-    for review_type in Review_Type:
-        for i in range(1, 11):
-            url_processor = URL_Processor(url, review_type, i)
-            try:
-                ISBN = url_processor.Extract_ISBN()
+    for url_processor in urls:
+        thread = threading.Thread(
+            target=scrape_thread, args=(url_processor, TEMP_DATA, Firebase))
+        thread.start()
+        threads.append(thread)
 
-                if force is False and Firebase.Get_Status(ISBN)['status'] == Status.COMPLETED.name:
-                    return Firebase.Get_Review(ISBN)
+    for thread in threads:
+        thread.join()
 
-                if TEMP_DATA['ibsn'] == "":
-                    TEMP_DATA['ibsn'] = ISBN
-                    Firebase.Remove_Review(ISBN)
-                    Firebase.Remove_Status(ISBN)
-                    Firebase.Set_Status(
-                        ISBN,
-                        Status.PROCESSING,
-                        {"start_time": str(start)})
-                if TEMP_DATA['product_url'] == "":
-                    TEMP_DATA['product_url'] = f"https://www.amazon.com/dp/{ISBN}"
-                if TEMP_DATA['review_url'] == "":
-                    TEMP_DATA['review_url'] = f"{url_root}get_data?isbn={ISBN}"
-
-                product_review_url = url_processor.Compose_Review_URL()
-                data = decider(product_review_url)
-
-                # check if json has error key
-                if 'error' in json.loads(data[0]):
-                    continue
-                else:
-                    data = json.loads(data[0])
-
-                    if TEMP_DATA['product_title'] == "":
-                        TEMP_DATA['product_title'] = data['product_title']
-                        Firebase.Set_Status(
-                            ISBN,
-                            None,
-                            {"product_title": data['product_title']}
-                        )
-
-                    TEMP_DATA['data'][review_type.name] += data['reviews']
-
-            except Exception as e:
-                return to_json({'error': str(e)}, 400)
-
-    # end timer
-    end = time.time()
-
-    if TEMP_DATA["time_taken"] == 0:
-        TEMP_DATA["time_taken"] = f'{end - start:.2f} seconds'
-
-    if TEMP_DATA["last_update"] == "":
-        TEMP_DATA["last_update"] = str(end)
+    TEMP_DATA['time_taken'] = time.time() - start_time
+    TEMP_DATA['last_update'] = str(dateparser.parse(time.ctime()))
 
     Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP_DATA['ibsn']}", TEMP_DATA)
-    Firebase.Set_Status(
-        TEMP_DATA['ibsn'],
-        Status.COMPLETED,
-        {"last_update": str(end),
-         "time_taken": TEMP_DATA["time_taken"],
-         Review_Type.ONE_STAR.name: len(TEMP_DATA['data'][Review_Type.ONE_STAR.name]),
-         Review_Type.TWO_STAR.name: len(TEMP_DATA['data'][Review_Type.TWO_STAR.name]),
-         Review_Type.THREE_STAR.name: len(TEMP_DATA['data'][Review_Type.THREE_STAR.name]),
-         Review_Type.FOUR_STAR.name: len(TEMP_DATA['data'][Review_Type.FOUR_STAR.name]),
-         Review_Type.FIVE_STAR.name: len(TEMP_DATA['data'][Review_Type.FIVE_STAR.name]), }
-    )
+    Firebase.Set_Status(url_processor.IBSN, Status.COMPLETED, {
+        "last_update": str(dateparser.parse(time.ctime())),
+        "time_taken": TEMP_DATA["time_taken"],
+        Review_Type.ONE_STAR.name: len(TEMP_DATA['data'][Review_Type.ONE_STAR.name]),
+        Review_Type.TWO_STAR.name: len(TEMP_DATA['data'][Review_Type.TWO_STAR.name]),
+        Review_Type.THREE_STAR.name: len(TEMP_DATA['data'][Review_Type.THREE_STAR.name]),
+        Review_Type.FOUR_STAR.name: len(TEMP_DATA['data'][Review_Type.FOUR_STAR.name]),
+        Review_Type.FIVE_STAR.name: len(TEMP_DATA['data'][Review_Type.FIVE_STAR.name]),
+    })
 
-    # return Firebase.Get_Status(ISBN)
-    return Firebase.Get_Review(ISBN)
+    return TEMP_DATA
+
+# def api_review(force, url, url_root, firebase):
+#     global Firebase
+#     Firebase = firebase
+
+#     # set up timer
+#     start = time.time()
+
+#     TEMP_DATA = {
+#         "ibsn": "",
+#         "last_update": "",
+#         "time_taken": 0,
+#         "product_title": "",
+#         "product_url": "",
+#         "review_url": "",
+#         "data": {
+#                 Review_Type.ONE_STAR.name: [],
+#                 Review_Type.TWO_STAR.name: [],
+#                 Review_Type.THREE_STAR.name: [],
+#                 Review_Type.FOUR_STAR.name: [],
+#                 Review_Type.FIVE_STAR.name: []
+#         }
+#     }
+
+#     for review_type in Review_Type:
+#         for i in range(1, 11):
+#             url_processor = URL_Processor(url, review_type, i)
+#             try:
+#                 ISBN = url_processor.Extract_ISBN()
+
+#                 if force is False and Firebase.Get_Status(ISBN)['status'] == Status.COMPLETED.name:
+#                     return Firebase.Get_Review(ISBN)
+
+#                 if TEMP_DATA['ibsn'] == "":
+#                     TEMP_DATA['ibsn'] = ISBN
+#                     Firebase.Remove_Review(ISBN)
+#                     Firebase.Remove_Status(ISBN)
+#                     Firebase.Set_Status(
+#                         ISBN,
+#                         Status.PROCESSING,
+#                         {"start_time": str(start)})
+#                 if TEMP_DATA['product_url'] == "":
+#                     TEMP_DATA['product_url'] = f"https://www.amazon.com/dp/{ISBN}"
+#                 if TEMP_DATA['review_url'] == "":
+#                     TEMP_DATA['review_url'] = f"{url_root}get_data?isbn={ISBN}"
+
+#                 product_review_url = url_processor.Compose_Review_URL()
+#                 data = decider(product_review_url)
+
+#                 # check if json has error key
+#                 if 'error' in json.loads(data[0]):
+#                     continue
+#                 else:
+#                     data = json.loads(data[0])
+
+#                     if TEMP_DATA['product_title'] == "":
+#                         TEMP_DATA['product_title'] = data['product_title']
+#                         Firebase.Set_Status(
+#                             ISBN,
+#                             None,
+#                             {"product_title": data['product_title']}
+#                         )
+
+#                     TEMP_DATA['data'][review_type.name] += data['reviews']
+
+#             except Exception as e:
+#                 return to_json({'error': str(e)}, 400)
+
+#     # end timer
+#     end = time.time()
+
+#     if TEMP_DATA["time_taken"] == 0:
+#         TEMP_DATA["time_taken"] = f'{end - start:.2f} seconds'
+
+#     if TEMP_DATA["last_update"] == "":
+#         TEMP_DATA["last_update"] = str(end)
+
+#     Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP_DATA['ibsn']}", TEMP_DATA)
+#     Firebase.Set_Status(
+#         TEMP_DATA['ibsn'],
+#         Status.COMPLETED,
+#         {"last_update": str(end),
+#          "time_taken": TEMP_DATA["time_taken"],
+#          Review_Type.ONE_STAR.name: len(TEMP_DATA['data'][Review_Type.ONE_STAR.name]),
+#          Review_Type.TWO_STAR.name: len(TEMP_DATA['data'][Review_Type.TWO_STAR.name]),
+#          Review_Type.THREE_STAR.name: len(TEMP_DATA['data'][Review_Type.THREE_STAR.name]),
+#          Review_Type.FOUR_STAR.name: len(TEMP_DATA['data'][Review_Type.FOUR_STAR.name]),
+#          Review_Type.FIVE_STAR.name: len(TEMP_DATA['data'][Review_Type.FIVE_STAR.name]), }
+#     )
+
+#     # return Firebase.Get_Status(ISBN)
+#     return Firebase.Get_Review(ISBN)
 
 
-def decider(url):
-    if request.args.get('pageNumber', None) is not None and int(request.args.get('pageNumber', None)) > 10:
-        return to_json({'error': 'Page number should be less than or equal to 10'}, 400)
+# def decider(url):
+#     if request.args.get('pageNumber', None) is not None and int(request.args.get('pageNumber', None)) > 10:
+#         return to_json({'error': 'Page number should be less than or equal to 10'}, 400)
 
-    if url:
-        try:
-            data = scrape(url)
-            return to_json(data)
-        except Exception as e:
-            return to_json({'error': str(e)}, 400)
-    return to_json({'error': 'URL to scrape is not provided'}, 400)
+#     if url:
+#         try:
+#             data = scrape(url)
+#             return to_json(data)
+#         except Exception as e:
+#             return to_json({'error': str(e)}, 400)
+#     return to_json({'error': 'URL to scrape is not provided'}, 400)
