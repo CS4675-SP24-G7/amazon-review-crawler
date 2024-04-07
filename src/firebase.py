@@ -11,8 +11,12 @@ class Firebase:
 
     def __init__(self) -> None:
 
+        # check if the file exists
+        if not os.path.exists('cred/firebase-admin.json'):
+            raise FileNotFoundError("cred/firebase-admin.json file not found")
+
         # read input from firebase-admin.json
-        with open('/app/cred/firebase-admin.json', 'r') as f:
+        with open('cred/firebase-admin.json', 'r') as f:
             firebase_json = json.load(f)
 
         cred = firebase_admin.credentials.Certificate(firebase_json)
