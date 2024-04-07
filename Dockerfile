@@ -13,7 +13,7 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # make directory for the model
-# RUN mkdir cred
+RUN mkdir cred
 
 ARG FIREBASE_CREDENTIAL
 ARG COOKIES
