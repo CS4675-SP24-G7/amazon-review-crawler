@@ -26,7 +26,7 @@ jobs:
                 FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}
               run: |
                 mkdir cred
-                echo $FIREBASE_JSON >> .cred/firebase_key.json
+                echo $FIREBASE_JSON >> ./cred/firebase_key.json
 
             - name: Build and push Backend docker image
               uses: docker/build-push-action@v2
