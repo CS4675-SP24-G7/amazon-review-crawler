@@ -28,6 +28,7 @@ jobs:
                   build-args: |
                       ENV_SERVICE_ACCOUNT_KEY: ${{ secrets.ENV_SERVICE_ACCOUNT_KEY }}
                       ENV_COOKIES: ${{ secrets.ENV_COOKIES }}
+                      FIREBASE_ADMIN: ${{ secrets.FIREBASE_ADMIN }}
                   push: true
                   tags: us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest
 

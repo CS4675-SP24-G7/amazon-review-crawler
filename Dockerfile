@@ -14,9 +14,13 @@ COPY . .
 
 ARG ENV_SERVICE_ACCOUNT_KEY
 ARG ENV_COOKIES
+ARG FIREBASE_ADMIN
 
 ENV SERVICE_ACCOUNT_KEY $ENV_SERVICE_ACCOUNT_KEY
 ENV COOKIES $ENV_COOKIES
+
+RUN mkdir cred
+RUN echo $FIREBASE_ADMIN > cred/firebase-admin.json
 
 # Specify the command to run on container start
 CMD [ "python", "./app.py" ]
