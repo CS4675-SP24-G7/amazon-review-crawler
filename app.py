@@ -1,3 +1,4 @@
+import os
 import time
 from flask import Flask, request
 import selectorlib
@@ -8,9 +9,26 @@ from url_extractor import *
 from fake_useragent import UserAgent
 from utils import Join_JSON
 from db_adapter import *
+import firebase
 
 app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('selectors.yml')
+
+# create "temp_data" directory if not exists
+if not os.path.exists('temp_data'):
+    os.makedirs('temp_data')
+if not os.path.exists('data'):
+    os.makedirs('data')
+
+
+class Status(Enum):
+    PROCESSING = 1
+    COMPLETED = 2
+    FAILED = 3
+    NOT_FOUND = 4
+
+
+Firebase = firebase.Firebase()
 
 
 def scrape(url, user_agent):
@@ -99,41 +117,87 @@ def api_review():
     start = time.time()
 
     url = request.args.get('url', None)
-    ISBN = URL_Processor(url, Review_Type.ONE_STAR, 0).Extract_ISBN()
 
-    Insert_Status(ISBN, Status.PROCESSING, str(
-        start), '', '', '', '', '', '', '')
-
-    user_agent = UserAgent().random
+    TEMP_DATA = {
+        "ibsn": "",
+        "last_update": "",
+        "time_taken": 0,
+        "product_title": "",
+        "product_url": "",
+        "review_url": "",
+        "data": {
+                Review_Type.ONE_STAR.name: [],
+                Review_Type.TWO_STAR.name: [],
+                Review_Type.THREE_STAR.name: [],
+                Review_Type.FOUR_STAR.name: [],
+                Review_Type.FIVE_STAR.name: []
+        }
+    }
 
     for review_type in Review_Type:
         for i in range(1, 11):
             url_processor = URL_Processor(url, review_type, i)
             try:
                 ISBN = url_processor.Extract_ISBN()
-                review_url = url_processor.Compose_Review_URL()
-                data = api(review_url, user_agent)
+                if TEMP_DATA['ibsn'] == "":
+                    TEMP_DATA['ibsn'] = ISBN
+                    Firebase.Remove_Review(ISBN)
+                    Firebase.Remove_Status(ISBN)
+                    Firebase.Set_Status(
+                        ISBN,
+                        Status.PROCESSING,
+                        {"start_time": str(start)})
+                if TEMP_DATA['product_url'] == "":
+                    TEMP_DATA['product_url'] = f"https://www.amazon.com/dp/{ISBN}"
+                if TEMP_DATA['review_url'] == "":
+                    TEMP_DATA['review_url'] = f"{request.url_root}get_data?isbn={ISBN}"
+
+                product_review_url = url_processor.Compose_Review_URL()
+                data = api(product_review_url)
 
                 # check if json has error key
                 if 'error' in json.loads(data[0]):
                     continue
                 else:
-                    # write data to file
-                    with open(f'./temp_data/{url_processor.IBSN}_{review_type.name}_{i}.json', 'w') as f:
-                        f.write(data[0])
-                        f.close()
+                    data = json.loads(data[0])
+
+                    if TEMP_DATA['product_title'] == "":
+                        TEMP_DATA['product_title'] = data['product_title']
+                        Firebase.Set_Status(
+                            ISBN,
+                            None,
+                            {"product_title": data['product_title']}
+                        )
+
+                    TEMP_DATA['data'][review_type.name] += data['reviews']
 
             except Exception as e:
                 return to_json({'error': str(e)}, 400)
 
-    # join all json files
-    Join_JSON(ISBN)
-
     # end timer
     end = time.time()
 
-    Insert_Status(ISBN, Status.COMPLETED, str(end),
-                  f'{end - start:.2f} seconds', '', '', '', '', '', '')
+    if TEMP_DATA["time_taken"] == 0:
+        TEMP_DATA["time_taken"] = f'{end - start:.2f} seconds'
+
+    if TEMP_DATA["last_update"] == "":
+        TEMP_DATA["last_update"] = str(end)
+
+    Firebase.Insert(f"COMPELTED/{TEMP_DATA['ibsn']}", TEMP_DATA)
+    Firebase.Set_Status(
+        TEMP_DATA['ibsn'],
+        Status.COMPLETED,
+        {"last_update": str(end),
+         "time_taken": TEMP_DATA["time_taken"],
+         Review_Type.ONE_STAR.name: len(TEMP_DATA['data'][Review_Type.ONE_STAR.name]),
+         Review_Type.TWO_STAR.name: len(TEMP_DATA['data'][Review_Type.TWO_STAR.name]),
+         Review_Type.THREE_STAR.name: len(TEMP_DATA['data'][Review_Type.THREE_STAR.name]),
+         Review_Type.FOUR_STAR.name: len(TEMP_DATA['data'][Review_Type.FOUR_STAR.name]),
+         Review_Type.FIVE_STAR.name: len(TEMP_DATA['data'][Review_Type.FIVE_STAR.name]), }
+    )
+
+    # Insert_Status(ISBN, Status.COMPLETED, str(end),
+    #               f'{end - start:.2f} seconds', '', '', '', '', '', '')
 
     return Get_Stats(ISBN)
 
@@ -185,17 +249,19 @@ def api_data():
             return to_json({'error': str(e)}, 400)
 
 
-def api(url, user_agent):
-    if request.args.get('pageNumber', None) is None:
-        url += '&pageNumber=1'
-    elif int(request.args.get('pageNumber', None)) <= 10:
-        url += '&pageNumber=' + request.args.get('pageNumber', None)
-    else:
+@app.route('/stopserver')
+def stop_server():
+    os.system("pkill -f 'python app.py'")
+    return 'Server stopped'
+
+
+def api(url):
+    if request.args.get('pageNumber', None) is not None and int(request.args.get('pageNumber', None)) > 10:
         return to_json({'error': 'Page number should be less than or equal to 10'}, 400)
 
     if url:
         try:
-            data = scrape(url, user_agent)
+            data = scrape(url)
             return to_json(data)
         except Exception as e:
             return to_json({'error': str(e)}, 400)
