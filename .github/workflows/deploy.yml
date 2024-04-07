@@ -26,8 +26,7 @@ jobs:
                   context: .
                   file: ./Dockerfile
                   build-args: |
-                      FIREBASE_CREDENTIAL: ${{ secrets.FIREBASE_CREDENTIAL }}
-                      COOKIES: ${{ secrets.COOKIES }}
+                      ENV: ${{ secrets.ENV }}
                   push: true
                   tags: us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest
 

@@ -15,5 +15,3 @@ for cookie in cookie_data['cookies']:
 # Convert extracted cookies to JSON string
 extracted_cookies_json = json.dumps(extracted_cookies, indent=4)
 
-# Print the result
-print(extracted_cookies_json)

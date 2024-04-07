@@ -12,19 +12,10 @@ RUN pip install -r requirements.txt
 # Copy all the python files to the working directory
 COPY . .
 
-# make directory for the model
-RUN mkdir cred
+ARG ENV
 
-ARG FIREBASE_CREDENTIAL
-ARG COOKIES
-
-# write COOKIES to cookies.json
-RUN echo ${COOKIES} > ./cred/cookies.json
-
-# write FIREBASE_CREDENTIAL to firebase-admin.json
-RUN echo -n "${FIREBASE_CREDENTIAL}" > ./cred/firebase-admin.json
-
-RUN echo -n "${FIREBASE_CREDENTIAL}" > ./src/firebase-admin.json
+# write ENV to .env file
+RUN echo "$ENV" > .env
 
 # Specify the command to run on container start
 CMD [ "python", "./app.py" ]
