@@ -14,12 +14,6 @@ from src.scraper import to_json, multi_threaded_scrape
 app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
 
-# create "temp_data" directory if not exists
-if not os.path.exists('temp_data'):
-    os.makedirs('temp_data')
-if not os.path.exists('data'):
-    os.makedirs('data')
-
 Firebase = firebase.Firebase()
 
 @app.route('/')

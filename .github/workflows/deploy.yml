@@ -20,6 +20,14 @@ jobs:
             - name: Configure docker
               run: gcloud auth configure-docker us-east1-docker.pkg.dev
 
+            - name: Copy Firebase JSON
+              working-directory: functions
+              env:
+                FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}
+              run: |
+                mkdir cred
+                echo $FIREBASE_JSON >> .cred/firebase_key.json
+
             - name: Build and push Backend docker image
               uses: docker/build-push-action@v2
               with:
@@ -28,7 +36,6 @@ jobs:
                   build-args: |
                       ENV_SERVICE_ACCOUNT_KEY: ${{ secrets.ENV_SERVICE_ACCOUNT_KEY }}
                       ENV_COOKIES: ${{ secrets.ENV_COOKIES }}
-                      FIREBASE_ADMIN: ${{ secrets.FIREBASE_ADMIN }}
                   push: true
                   tags: us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest
 

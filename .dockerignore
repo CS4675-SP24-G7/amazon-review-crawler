@@ -1,4 +1,10 @@
 # ignore data folder
-/data/
-/temp_data/
-/cred/
+/data
+/temp_data
+/cred
+.dockerignore
+.DS_Store
+.env
+/.github
+/.git
+Dockerfile
