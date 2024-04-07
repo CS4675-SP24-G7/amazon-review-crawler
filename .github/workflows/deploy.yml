@@ -28,17 +28,6 @@ jobs:
                   json: ${{ secrets.FIREBASE_CREDENTIAL }}
                   dir: "cred/"
 
-            - name: create folder cred
-              run: mkdir cred
-
-            - name: create-json cookies.json
-              id: create-json-1
-              uses: jsdaniell/create-json@v1.2.3
-              with:
-                  name: "cookies.json"
-                  json: ${{ secrets.COOKIES }}
-                  dir: "cred/"
-
             - name: Build and push Backend docker image
               uses: docker/build-push-action@v2
               with:
