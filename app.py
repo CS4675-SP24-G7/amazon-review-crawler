@@ -22,7 +22,6 @@ if not os.path.exists('data'):
 
 Firebase = firebase.Firebase()
 
-
 @app.route('/')
 def index():
     return 'Welcome to Amazon Review Scraper API'

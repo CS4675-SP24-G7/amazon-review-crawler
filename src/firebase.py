@@ -11,8 +11,11 @@ class Firebase:
 
     def __init__(self) -> None:
         # import file ../cred/firebase-admin.json
-        cred = firebase_admin.credentials.Certificate(
-            "cred/firebase-admin.json")
+
+        # read file cred/firebase-admin.json to dict
+        # list all file in cred folder
+
+        cred = firebase_admin.credentials.Certificate("cred/firebase-admin.json")
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://cs4675-cpfs-default-rtdb.firebaseio.com/'
         })

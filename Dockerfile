@@ -1,8 +1,5 @@
 FROM python:3.9
 
-ARG COOKIES
-ARG FIREBASE_CREDENTIAL
-
 # Set the working directory in the container
 WORKDIR /app
 
@@ -16,13 +13,21 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # make directory for the model
-RUN mkdir cred
+# RUN mkdir cred
+
+ARG FIREBASE_CREDENTIAL
+ARG COOKIES
 
 # write COOKIES to cookies.json
-RUN echo $COOKIES > cred/cookies.json
+# RUN echo ${COOKIES} > ./cred/cookies.json
 
 # write FIREBASE_CREDENTIAL to firebase-admin.json
-RUN echo $FIREBASE_CREDENTIAL > cred/firebase-admin.json
+# RUN echo ${FIREBASE_CREDENTIAL} > ./cred/firebase-admin.json
+
+# print the content of the files
+# RUN cat ./cred/cookies.json
+
+# RUN cat ./cred/firebase-admin.json
 
 # Specify the command to run on container start
 CMD [ "python", "./app.py" ]
