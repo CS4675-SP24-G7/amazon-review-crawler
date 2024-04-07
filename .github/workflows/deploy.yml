@@ -22,9 +22,8 @@ jobs:
 
             - name: Build and push Backend docker image
               run: |
-                  docker build -t us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest \
-                  --build-arg FIREBASE_CREDENTIAL=$FIREBASE_CREDENTIAL \
-                  --build-arg COOKIES=$COOKIES ./
+                  docker build -t us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest --build-arg FIREBASE_CREDENTIAL=$FIREBASE_CREDENTIAL --build-arg COOKIES=$COOKIES .
+
                   docker push us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest
               env:
                   COOKIES: ${{ secrets.COOKIES }}
