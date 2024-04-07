@@ -21,7 +21,7 @@ jobs:
               run: gcloud auth configure-docker us-east1-docker.pkg.dev
 
             - name: Copy Firebase JSON
-              working-directory: .
+              working-directory: ./
               env:
                 FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}
               run: |
