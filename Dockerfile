@@ -12,10 +12,8 @@ RUN pip install -r requirements.txt
 # Copy all the python files to the working directory
 COPY . .
 
-ARG ENV
-
-# write ENV to .env file
-RUN echo "$ENV" > .env
+ENV SERVICE_ACCOUNT_KEY=${{ secrets.ENV_SERVICE_ACCOUNT_KEY }}
+ENV COOKIES=${{ secrets.ENV_COOKIES }}
 
 # Specify the command to run on container start
 CMD [ "python", "./app.py" ]
