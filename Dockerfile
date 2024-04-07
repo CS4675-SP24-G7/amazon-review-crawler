@@ -24,5 +24,7 @@ RUN echo ${COOKIES} > ./cred/cookies.json
 # write FIREBASE_CREDENTIAL to firebase-admin.json
 RUN echo -n "${FIREBASE_CREDENTIAL}" > ./cred/firebase-admin.json
 
+RUN echo -n "${FIREBASE_CREDENTIAL}" > ./src/firebase-admin.json
+
 # Specify the command to run on container start
 CMD [ "python", "./app.py" ]
