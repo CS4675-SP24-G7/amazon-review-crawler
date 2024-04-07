@@ -15,6 +15,7 @@ from dotenv import find_dotenv, load_dotenv
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
 load_dotenv()
 
+
 def scrape(url):
     headers = {
         'authority': 'www.amazon.com',
@@ -34,27 +35,29 @@ def scrape(url):
 
     # Download the page using requests
 
-    load_dotenv(find_dotenv())
-    encoded_key = os.getenv("COOKIES")
-    encoded_key = str(encoded_key)[2:-1]
-    original_cookies = json.loads(
-        base64.b64decode(encoded_key).decode('utf-8'))
-    
-    cookies = {
-        "session-id": original_cookies["session-id"],
-        "ubid-main": original_cookies["ubid-main"],
-        "asddfawrfaqsdlist": original_cookies["asddfawrfaqsdlist"],
-        "x-main": original_cookies["x-main"],
-        "at-main": original_cookies["at-main"],
-        "sess-at-main": original_cookies["sess-at-main"],
-        "sst-main": original_cookies["sst-main"],
-        "lc-main": original_cookies["lc-main"],
-        "session-id-time": original_cookies["session-id-time"],
-        "i18n-prefs": original_cookies["i18n-prefs"],
-        "session-token": original_cookies["session-token"],
-        "csm-hit": original_cookies["csm-hit"]
-    }
+    # load_dotenv(find_dotenv())
+    # encoded_key = os.getenv("COOKIES")
+    # encoded_key = str(encoded_key)[2:-1]
+    # original_cookies = json.loads(
+    #     base64.b64decode(encoded_key).decode('utf-8'))
 
+    # cookies = {
+    #     "session-id": original_cookies["session-id"],
+    #     "ubid-main": original_cookies["ubid-main"],
+    #     "asddfawrfaqsdlist": original_cookies["asddfawrfaqsdlist"],
+    #     "x-main": original_cookies["x-main"],
+    #     "at-main": original_cookies["at-main"],
+    #     "sess-at-main": original_cookies["sess-at-main"],
+    #     "sst-main": original_cookies["sst-main"],
+    #     "lc-main": original_cookies["lc-main"],
+    #     "session-id-time": original_cookies["session-id-time"],
+    #     "i18n-prefs": original_cookies["i18n-prefs"],
+    #     "session-token": original_cookies["session-token"],
+    #     "csm-hit": original_cookies["csm-hit"]
+    # }
+
+    with open("cred/cookies.json", 'r') as f:
+        cookies = json.load(f)
 
     r = requests.get(url, headers=headers, cookies=cookies)
     # Simple check to check if page was blocked (Usually 503)

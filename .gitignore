@@ -10,7 +10,7 @@ cookies.json
 firebase-admin.json
 *.sqlite3
 *.db
-my_cookies.json
+*.json
 
 data/
 temp_data/
