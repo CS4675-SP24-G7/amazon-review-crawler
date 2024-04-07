@@ -56,7 +56,8 @@ def scrape(url):
     #     "csm-hit": original_cookies["csm-hit"]
     # }
 
-    with open("cred/cookies.json", 'r') as f:
+    # load cookies.json from /cred folder
+    with open('cred/cookies.json') as f:
         cookies = json.load(f)
 
     r = requests.get(url, headers=headers, cookies=cookies)
