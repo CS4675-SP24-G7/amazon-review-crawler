@@ -25,6 +25,9 @@ jobs:
               with:
                   context: .
                   file: ./Dockerfile
+                  build-args: |
+                      ENV_SERVICE_ACCOUNT_KEY: ${{ secrets.ENV_SERVICE_ACCOUNT_KEY }}
+                      ENV_COOKIES: ${{ secrets.ENV_COOKIES }}
                   push: true
                   tags: us-east1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/crawler/runner:latest
 
