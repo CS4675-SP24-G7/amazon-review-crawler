@@ -16,6 +16,7 @@ extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
 
 Firebase = firebase.Firebase()
 
+
 @app.route('/')
 def index():
     return 'Welcome to Amazon Review Scraper API'
@@ -74,11 +75,15 @@ def api_data():
 def scrape_handler():
     url = request.args.get('url', None)
 
+    # get force parameter,
+    # if force is True, scrape the data regardless of the status
+    force = request.args.get('force', False)
+
     url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
     status = Firebase.Get_Status(url_processor.Extract_ISBN())
     data = Firebase.Get_Review(url_processor.Extract_ISBN())
 
-    if status and status['status'] == Status.COMPLETED.name and data:
+    if not force and status and status['status'] == Status.COMPLETED.name and data:
         return jsonify(data), 200
 
     urls = []
