@@ -19,15 +19,10 @@ ARG FIREBASE_CREDENTIAL
 ARG COOKIES
 
 # write COOKIES to cookies.json
-# RUN echo ${COOKIES} > ./cred/cookies.json
+RUN echo ${COOKIES} > ./cred/cookies.json
 
 # write FIREBASE_CREDENTIAL to firebase-admin.json
-# RUN echo ${FIREBASE_CREDENTIAL} > ./cred/firebase-admin.json
-
-# print the content of the files
-# RUN cat ./cred/cookies.json
-
-# RUN cat ./cred/firebase-admin.json
+RUN echo ${FIREBASE_CREDENTIAL} > ./cred/firebase-admin.json
 
 # Specify the command to run on container start
 CMD [ "python", "./app.py" ]

@@ -13,6 +13,7 @@ firebase-admin.json
 
 data/
 temp_data/
+cred/
 
 # Distribution / packaging
 .Python

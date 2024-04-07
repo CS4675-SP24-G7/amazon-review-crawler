@@ -1,3 +1,4 @@
 # ignore data folder
 /data/
 /temp_data/
+/cred/
