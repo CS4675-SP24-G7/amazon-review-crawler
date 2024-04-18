@@ -10,6 +10,8 @@ from src.url_extractor import *
 from src.Shared import Status, Review_Type
 import src.firebase as firebase
 from src.scraper import to_json, multi_threaded_scrape
+from FilterReview.ReviewFilter import *
+from geminiAPI import *
 
 app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
@@ -85,7 +87,13 @@ def scrape_handler():
     data = Firebase.Get_Review(url_processor.Extract_ISBN())
 
     if status and status['status'] == Status.COMPLETED.name and data:
-        return jsonify(data), 200
+        theData = filter(data)
+        filteredData = "\n".join(theData[0])
+        returning = geminiApiCall(filteredData)
+        returningData = [[]]
+        returningData[0] = returning
+        returningData.append(theData[1])
+        return jsonify(returningData[0]), 200
 
     urls = []
     for review_type in Review_Type:
@@ -98,7 +106,22 @@ def scrape_handler():
         return jsonify({'error': 'No URLs provided'}), 400
 
     results = multi_threaded_scrape(urls, Firebase)
-    return jsonify(results), 200
+    theData = filter(results)
+    filteredData = "\n".join(theData[0])
+    returning = geminiApiCall(filteredData)
+    returningData = [[]]
+    returningData[0] = returning
+    returningData.append(theData[1])
+    return jsonify(returningData[0]), 200
+
+# @app.route('/outputData')
+# def outputData():
+#     url = request.args.get('url', None)
+#     returning = geminiApiCall(url)
+#     return returning, 200
+    
+
+
 
 
 if __name__ == '__main__':
