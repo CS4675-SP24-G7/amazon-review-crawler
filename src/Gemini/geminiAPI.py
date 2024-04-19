@@ -1,20 +1,9 @@
 import os
+import random
 import google.generativeai as genai
 import re
 import json
 
-genai.configure(api_key=os.getenv("APIKEY"))
-
-# Set up the model
-generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 0,
-    "max_output_tokens": 8192,
-}
-
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro-latest", generation_config=generation_config)
 
 JSON_MODEL_A_D = """
 Provide a response in a structured JSON format that matches the following model:
@@ -39,15 +28,32 @@ Condition 1: no more than 5 advantages, no more than 5 disadvantages.
 Only use the provided resources.
 """
 
-# ORIGINAL = """
-# Make me a JSON data with the key Summary, Advantage, and Disadvantage.
-# Give me a summary of less than 5 sentences, less than 5 advantages, less than 5 disadvantages.
-# Put advantage and disadvantages in an array.
-# Only use the provided resources.
-# """
+
+def init_gemini():
+    # read gemini "key" from gemini.json in cred
+    with open("cred/gemini_keys.json", "r") as file:
+        gemini_keys = json.load(file)["keys"]
+
+    # randon key from list of key
+    genai.configure(api_key=random.choice(gemini_keys))
+
+    # Set up the model
+    generation_config = {
+        "temperature": 1,
+        "top_p": 0.95,
+        "top_k": 0,
+        "max_output_tokens": 8192,
+    }
+
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-pro-latest", generation_config=generation_config)
+
+    return model
 
 
 def gemini_summary(data):
+    model = init_gemini()
+
     convo = model.start_chat(history=[])
     convo.send_message(
         f"{GENERATE_SUMMARY}\n{JSON_MODEL_SUMMARY}\nDATA: {data}")
@@ -56,6 +62,8 @@ def gemini_summary(data):
 
 
 def gemini_a_d(data):
+    model = init_gemini()
+
     convo = model.start_chat(history=[])
     convo.send_message(f"{GENERATE_A_D}\n{JSON_MODEL_A_D}\nDATA: {data}")
     print(convo.last.text)
@@ -75,7 +83,8 @@ def gemini_extract_json(text_response):
             json_objects.append(json_obj)
         except json.JSONDecodeError:
             # Extend the search for nested structures
-            extended_json_str = extend_search(text_response, match.span())
+            extended_json_str = gemini_extend_search(
+                text_response, match.span())
             try:
                 json_obj = json.loads(extended_json_str)
                 json_objects.append(json_obj)
@@ -88,7 +97,7 @@ def gemini_extract_json(text_response):
         return None  # Or handle this case as you prefer
 
 
-def extend_search(text, span):
+def gemini_extend_search(text, span):
     # Extend the search to try to capture nested structures
     start, end = span
     nest_count = 0

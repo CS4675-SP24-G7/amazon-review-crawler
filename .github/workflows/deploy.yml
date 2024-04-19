@@ -26,10 +26,12 @@ jobs:
               env:
                   FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}
                   COOKIES_JSON: ${{ secrets.COOKIES_JSON }}
+                  GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
               run: |
                   mkdir cred
                   echo $FIREBASE_JSON >> ./cred/firebase_key.json
                   echo $COOKIES_JSON >> ./cred/cookies.json
+                  echo $GEMINI_KEYS >> ./cred/gemini_keys.json
 
             - name: Build and push Backend docker image
               uses: docker/build-push-action@v2

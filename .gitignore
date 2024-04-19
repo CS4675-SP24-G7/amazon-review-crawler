@@ -8,6 +8,8 @@ __pycache__/
 
 cookies.json
 firebase-admin.json
+gemini.json
+
 *.sqlite3
 *.db
 *.json
