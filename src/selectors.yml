@@ -2,7 +2,7 @@ product_title:
     css: 'h1 a[data-hook="product-link"]'
     type: Text
 reviews:
-    css: 'div.review div.a-section.celwidget'
+    css: "div.review div.a-section.celwidget"
     multiple: true
     type: Text
     children:
@@ -10,7 +10,7 @@ reviews:
             css: a.review-title
             type: Text
         content:
-            css: 'div.a-row.review-data span.review-text'
+            css: "div.a-row.review-data span.review-text"
             type: Text
         date:
             css: span.a-size-base.a-color-secondary
@@ -24,7 +24,7 @@ reviews:
             css: span.a-profile-name
             type: Text
         rating:
-            css: 'div.a-row:nth-of-type(2) > a.a-link-normal:nth-of-type(1)'
+            css: "div.a-row:nth-of-type(2) > a.a-link-normal:nth-of-type(1)"
             type: Attribute
             attribute: title
         found_helpful:
@@ -37,7 +37,7 @@ reviews:
             css: 'span[data-hook="avp-badge"]'
             type: Text
 next_page:
-    css: 'li.a-last a'
+    css: "li.a-last a"
     type: Link
 average_rating:
     css: 'span[data-hook="rating-out-of-text"]'
@@ -51,8 +51,8 @@ histogram:
     type: Text
     children:
         key:
-            css: 'td.aok-nowrap a.a-link-normal'
+            css: "td.aok-nowrap a.a-link-normal"
             type: Text
         value:
-            css: 'td.a-text-right a.a-link-normal'
+            css: "td.a-text-right a.a-link-normal"
             type: Text

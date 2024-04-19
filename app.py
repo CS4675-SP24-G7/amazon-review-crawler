@@ -1,39 +1,21 @@
-import os
-import threading
-import time
 from flask import Flask, jsonify, request
 import selectorlib
-import requests
-import json
-from dateutil import parser as dateparser
 from src.url_extractor import *
 from src.Shared import Status, Review_Type
 import src.firebase as firebase
 from src.scraper import to_json, multi_threaded_scrape
-from FilterReview.ReviewFilter import *
-from geminiAPI import *
+from src.FilterReview.ReviewFilter import *
+from src.Gemini.geminiAPI import *
 
 app = Flask(__name__)
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
 
-# create "temp_data" directory if not exists
-if not os.path.exists('temp_data'):
-    os.makedirs('temp_data')
-if not os.path.exists('data'):
-    os.makedirs('data')
-
 Firebase = firebase.Firebase()
+
 
 @app.route('/')
 def index():
     return 'Welcome to Amazon Review Scraper API'
-
-
-# @app.route('/get_reviews')
-# def get_reviews():
-#     url = request.args.get('url', None)
-#     force = request.args.get('force', False)
-#     return api_review(force, url, request.url_root, Firebase)
 
 
 @app.route('/get_status')
@@ -81,19 +63,14 @@ def api_data():
 @app.route('/scrape')
 def scrape_handler():
     url = request.args.get('url', None)
+    force = request.args.get('force', 'False').lower() == 'true'
 
     url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
     status = Firebase.Get_Status(url_processor.Extract_ISBN())
     data = Firebase.Get_Review(url_processor.Extract_ISBN())
 
-    if status and status['status'] == Status.COMPLETED.name and data:
-        theData = filter(data)
-        filteredData = "\n".join(theData[0])
-        returning = geminiApiCall(filteredData)
-        returningData = [[]]
-        returningData[0] = returning
-        returningData.append(theData[1])
-        return jsonify(returningData[0]), 200
+    if not force and status['status'] == Status.COMPLETED.name and data:
+        return jsonify(data), 200
 
     urls = []
     for review_type in Review_Type:
@@ -106,24 +83,100 @@ def scrape_handler():
         return jsonify({'error': 'No URLs provided'}), 400
 
     results = multi_threaded_scrape(urls, Firebase)
-    theData = filter(results)
-    filteredData = "\n".join(theData[0])
-    returning = geminiApiCall(filteredData)
-    returningData = [[]]
-    returningData[0] = returning
-    returningData.append(theData[1])
-    return jsonify(returningData[0]), 200
 
-# @app.route('/outputData')
-# def outputData():
-#     url = request.args.get('url', None)
-#     returning = geminiApiCall(url)
-#     return returning, 200
-    
+    return jsonify(results), 200
 
 
+@app.route('/filter')
+def filter_handler(f):
+    """
+    f is force the scraper to run again
+    """
+
+    url = request.args.get('url', None)
+    force = request.args.get('force', 'False').lower() == 'true' or f
+
+    url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+    status = Firebase.Get_Status(url_processor.Extract_ISBN())
+    data = Firebase.Get_Review(url_processor.Extract_ISBN())
+
+    theData = None
+
+    if not force and status['status'] == Status.COMPLETED.name and data:
+        if 'filtered' in data:
+            theData = data['filtered']
+            return jsonify(theData), 200
+
+    else:
+        scrape_handler()
+        data = Firebase.Get_Review(url_processor.Extract_ISBN())
+
+    theData = filter(data)[0]
+    Firebase.Set_Filters(url_processor.Extract_ISBN(), theData)
+
+    return jsonify(theData), 200
+
+
+@app.route('/summary')
+def summary_handler():
+
+    url = request.args.get('url', None)
+
+    url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+    status = Firebase.Get_Status(url_processor.Extract_ISBN())
+    data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+
+    theData = None
+
+    if status['status'] == Status.COMPLETED.name and data:
+        theData = data
+    else:
+        filter_handler(f=True)
+        data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+        theData = data
+
+    filteredData_str = "\n".join(theData)
+
+    summary = gemini_summary(filteredData_str)
+    summary_json = gemini_extract_json(summary)
+
+    return jsonify(summary_json), 200
+
+
+@app.route('/ad')
+def ad_handler():
+
+    url = request.args.get('url', None)
+
+    url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+    status = Firebase.Get_Status(url_processor.Extract_ISBN())
+    data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+
+    theData = None
+
+    if status['status'] == Status.COMPLETED.name and data:
+        theData = data
+    else:
+        filter_handler(f=True)
+        data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+        theData = data
+
+    filteredData_str = "\n".join(theData)
+
+    summary = gemini_a_d(filteredData_str)
+    summary_json = gemini_extract_json(summary)
+
+    return jsonify(summary_json), 200
 
 
 if __name__ == '__main__':
+    # remove all _pycache_ folders
+    import os
+    import shutil
+    for root, dirs, files in os.walk(".", topdown=False):
+        for name in dirs:
+            if name == "__pycache__":
+                shutil.rmtree(os.path.join(root, name))
+
     app.debug = True
     app.run(host="0.0.0.0", port=8080)
