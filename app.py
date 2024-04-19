@@ -9,7 +9,7 @@ from src.Gemini.geminiAPI import *
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r'/*': {'origins': '*'}})
 
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
 
