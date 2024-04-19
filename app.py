@@ -172,6 +172,31 @@ def ad_handler():
     return jsonify(summary_json), 200
 
 
+@app.route('/decision')
+def decision_handler():
+
+    url = request.args.get('url', None)
+
+    url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+    status = Firebase.Get_Status(url_processor.Extract_ISBN())
+    data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+
+    theData = None
+
+    if status['status'] == Status.COMPLETED.name and data:
+        theData = data
+    else:
+        filter_handler(f=True)
+        data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+        theData = data
+
+    filteredData_str = "\n".join(theData)
+
+    summary = gemini_decision(filteredData_str)
+    summary_json = gemini_extract_json(summary)
+
+    return jsonify(summary_json), 200
+
 if __name__ == '__main__':
     # remove all _pycache_ folders
     import os

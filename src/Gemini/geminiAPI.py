@@ -16,6 +16,14 @@ Provide a response in a structured JSON format that matches the following model:
 {"summary": ""}
 """
 
+JSON_MODEL_DECISION = """
+Provide a response in a structured JSON format that matches the following model:
+{"buying_decision": true/false},
+"reason": ""}
+Where buying_decision is a boolean (true means should buy, false means should not buy) 
+and reason is a string, explains why buying_decision is made.
+"""
+
 GENERATE_SUMMARY = """
 Make a summary from the provided reviews data. 
 Condition 1: Give me a summary of no more than 10 sentences.
@@ -27,6 +35,14 @@ GENERATE_A_D = """
 Make me Advantage, and Disadvantage from the provided reviews data. 
 Condition 1: no more than 5 advantages, no more than 5 disadvantages.
 Condition 2: No markdown, no HTML, no special characters.
+Only use the provided resources.
+"""
+
+GENERATE_DECISION = """
+Make a buying decision from the provided reviews data.
+Condition 1: The decision should be a boolean (true means should buy, false means should not buy).
+Condition 2: The decision should be supported by a reason.
+Condition 3: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
 
@@ -75,6 +91,16 @@ def gemini_a_d(data):
 
     convo = model.start_chat(history=[])
     convo.send_message(f"{GENERATE_A_D}\n{JSON_MODEL_A_D}\nDATA: {data}")
+    # print(convo.last.text)
+    return convo.last.text
+
+
+def gemini_decision(data):
+    model = init_gemini()
+
+    convo = model.start_chat(history=[])
+    convo.send_message(
+        f"{GENERATE_DECISION}\n{JSON_MODEL_DECISION}\nDATA: {data}")
     # print(convo.last.text)
     return convo.last.text
 
