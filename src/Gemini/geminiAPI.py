@@ -1,6 +1,6 @@
+
 import os
 import random
-import google.generativeai as genai
 import re
 import json
 
@@ -30,12 +30,19 @@ Only use the provided resources.
 
 
 def init_gemini():
+    import google.generativeai as genai
+
     # read gemini "key" from gemini.json in cred
     with open("cred/gemini_keys.json", "r") as file:
         gemini_keys = json.load(file)["keys"]
 
     # randon key from list of key
-    genai.configure(api_key=random.choice(gemini_keys))
+    key = random.choice(gemini_keys)
+
+    # print(f"Using key {key}")
+
+    # Set up the API key
+    genai.configure(api_key=key)
 
     # Set up the model
     generation_config = {
@@ -57,7 +64,7 @@ def gemini_summary(data):
     convo = model.start_chat(history=[])
     convo.send_message(
         f"{GENERATE_SUMMARY}\n{JSON_MODEL_SUMMARY}\nDATA: {data}")
-    print(convo.last.text)
+    # print(convo.last.text)
     return convo.last.text
 
 
@@ -66,7 +73,7 @@ def gemini_a_d(data):
 
     convo = model.start_chat(history=[])
     convo.send_message(f"{GENERATE_A_D}\n{JSON_MODEL_A_D}\nDATA: {data}")
-    print(convo.last.text)
+    # print(convo.last.text)
     return convo.last.text
 
 
