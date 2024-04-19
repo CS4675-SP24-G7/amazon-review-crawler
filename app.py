@@ -106,7 +106,7 @@ def filter_handler(f=False):
     theData = None
 
     if not force and status['status'] == Status.COMPLETED.name \
-            and status['filtered'] == True and data['filtered']:
+            and 'filtered' in data and data['filtered']:
         theData = data['filtered']
         return jsonify(theData), 200
 
@@ -197,6 +197,7 @@ def decision_handler():
 
     return jsonify(summary_json), 200
 
+
 if __name__ == '__main__':
     # remove all _pycache_ folders
     import os
@@ -207,4 +208,4 @@ if __name__ == '__main__':
                 shutil.rmtree(os.path.join(root, name))
 
     app.debug = True
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=3000)
