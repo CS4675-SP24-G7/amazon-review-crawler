@@ -19,12 +19,14 @@ Provide a response in a structured JSON format that matches the following model:
 GENERATE_SUMMARY = """
 Make a summary from the provided reviews data. 
 Condition 1: Give me a summary of no more than 10 sentences.
+Condition 2: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
 
 GENERATE_A_D = """
 Make me Advantage, and Disadvantage from the provided reviews data. 
 Condition 1: no more than 5 advantages, no more than 5 disadvantages.
+Condition 2: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
 
