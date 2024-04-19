@@ -88,7 +88,7 @@ def scrape_handler():
 
 
 @app.route('/filter')
-def filter_handler(f):
+def filter_handler(f=False):
     """
     f is force the scraper to run again
     """
