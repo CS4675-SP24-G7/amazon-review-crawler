@@ -105,10 +105,10 @@ def filter_handler(f=False):
 
     theData = None
 
-    if not force and status['status'] == Status.COMPLETED.name and data:
-        if 'filtered' in data:
-            theData = data['filtered']
-            return jsonify(theData), 200
+    if not force and status['status'] == Status.COMPLETED.name \
+            and status['filtered'] == True and data['filtered']:
+        theData = data['filtered']
+        return jsonify(theData), 200
 
     else:
         scrape_handler()

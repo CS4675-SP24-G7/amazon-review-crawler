@@ -30,6 +30,9 @@ class Firebase:
         if extra_data != None:
             self.ref.child(f"STATUS/{ISBN}").update(extra_data)
 
+    def Set_Filter_Status(self, ISBN, filter_status: bool):
+        self.ref.child(f"STATUS/{ISBN}").update({"filtered": filter_status})
+
     def Get_Status(self, ISBN):
         data = self.ref.child(f"COMPLETED/{ISBN}").get()
         if data is None:
@@ -55,6 +58,7 @@ class Firebase:
     def Set_Filters(self, ISBN, filters):
         self.ref.child(
             f"{Status.COMPLETED.name}/{ISBN}").update({"filtered": filters})
+        self.Set_Filter_Status(ISBN, True)
 
     def Set_Field(self, path, field, value):
         self.ref.child(path).update({field: value})
