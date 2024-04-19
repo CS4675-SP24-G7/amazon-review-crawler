@@ -13,7 +13,8 @@ Provide a response in a structured JSON format that matches the following model:
 
 JSON_MODEL_SUMMARY = """
 Provide a response in a structured JSON format that matches the following model:
-{"summary": ""}
+{"summary": "",
+"rating": 0.0}
 """
 
 JSON_MODEL_DECISION = """
@@ -27,7 +28,8 @@ and reason is a string, explains why buying_decision is made.
 GENERATE_SUMMARY = """
 Make a summary from the provided reviews data. 
 Condition 1: Give me a summary of no more than 10 sentences.
-Condition 2: No markdown, no HTML, no special characters.
+Condition 2: On a scale of 0 to 5, give me the average rating of the reviews.
+Condition 3: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
 
