@@ -6,8 +6,11 @@ import src.firebase as firebase
 from src.scraper import to_json, multi_threaded_scrape
 from src.FilterReview.ReviewFilter import *
 from src.Gemini.geminiAPI import *
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
+
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
 
 Firebase = firebase.Firebase()
