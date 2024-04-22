@@ -16,6 +16,7 @@ from bs4 import BeautifulSoup
 # import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+import threading
 
 
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
@@ -189,9 +190,7 @@ def scrape_thread(url_processor: URL_Processor, temp_data, Firebase: firebase.Fi
 
 #     return TEMP_DATA
 
-
-def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
-
+def init_driver():
     chrome_options = webdriver.ChromeOptions()
 
     # chrome_options.add_argument("--headless")
@@ -201,11 +200,21 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
     chrome_options.add_argument(f"--user-agent={my_user_agent}")
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
+    # disable javascript
+    chrome_options.add_argument("--disable-javascript")
+
+    driver = webdriver.Chrome(options=chrome_options)
+
+    return driver
+
+
+def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
+
+    driver = init_driver()
 
     composed_url = urls[0].Compose_Review_URL()
     original_url = f"{composed_url}/"
-    print(composed_url)
-    driver = webdriver.Chrome(options=chrome_options)
+
     driver.get("https://amazon.com")
     driver.implicitly_wait(10)
 
@@ -214,7 +223,7 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
         "last_update": "",
         "time_taken": 0,
         "product_title": "",
-        "product_url": original_url,
+        "product_url": original_url.replace("/product-reviews/", "/dp/"),
         "data": {
             Review_Type.ONE_STAR.name: [],
             Review_Type.TWO_STAR.name: [],
@@ -225,7 +234,47 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
     }
     start_time = time.time()
 
-# https://www.amazon.com/Nike-Womens-Running-Metallic-Numeric_12/product-reviews/B01AMT0EYU/filterByStar=five_star
+    jobs = []
+
+    th = threading.Thread(target=first_page_scrape, args=(
+        init_driver(), composed_url, TEMP))
+    jobs.append(th)
+    th.start()
+
+    for review_type in Review_Type:
+        composed_url = f"{original_url}?filterByStar={review_type.name.lower()}"
+        th = threading.Thread(target=single_scrape, args=(
+            init_driver(), composed_url, TEMP))
+        jobs.append(th)
+        th.start()
+
+    for job in jobs:
+        job.join()
+
+    TEMP['time_taken'] = time.time() - start_time
+    TEMP['last_update'] = str(dateparser.parse(time.ctime()))
+
+    # remove duplicated reviews each star
+    for review_type in Review_Type:
+        TEMP['data'][review_type.name] = list(
+            {v['content']: v for v in TEMP['data'][review_type.name]}.values())
+        
+
+    Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP['ibsn']}", TEMP)
+    Firebase.Set_Status(TEMP['ibsn'], Status.COMPLETED, {
+        "last_update": str(dateparser.parse(time.ctime())),
+        "time_taken": TEMP["time_taken"],
+        Review_Type.ONE_STAR.name: len(TEMP['data'][Review_Type.ONE_STAR.name]),
+        Review_Type.TWO_STAR.name: len(TEMP['data'][Review_Type.TWO_STAR.name]),
+        Review_Type.THREE_STAR.name: len(TEMP['data'][Review_Type.THREE_STAR.name]),
+        Review_Type.FOUR_STAR.name: len(TEMP['data'][Review_Type.FOUR_STAR.name]),
+        Review_Type.FIVE_STAR.name: len(TEMP['data'][Review_Type.FIVE_STAR.name]),
+    })
+
+    return TEMP
+
+
+def first_page_scrape(driver, composed_url, TEMP):
     while True:
         driver.get(composed_url)
 
@@ -283,73 +332,56 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
         # extract href attribute
         composed_url = next_page.get_attribute('href')
 
-    for review_type in Review_Type:
-        composed_url = f"{original_url}?filterByStar={review_type.name.lower()}"
 
-        while True:
-            driver.get(composed_url)
+def single_scrape(driver, composed_url, TEMP):
+    while True:
+        driver.get(composed_url)
 
-            stars = driver.find_elements(
-                By.XPATH,
-                '//*[@data-hook="review"]/div/div/div[2]/a/i/span')
+        stars = driver.find_elements(
+            By.XPATH,
+            '//*[@data-hook="review"]/div/div/div[2]/a/i/span')
 
-            contents = driver.find_elements(
-                By.XPATH,
-                '//*[@data-hook="review"]/div/div/div[4]/span/span')
+        contents = driver.find_elements(
+            By.XPATH,
+            '//*[@data-hook="review"]/div/div/div[4]/span/span')
 
-            for i in range(min(len(stars), len(contents))):
-                starInt = int(
-                    float(stars[i].get_attribute('innerHTML').split(' ')[0]))
+        for i in range(min(len(stars), len(contents))):
+            starInt = int(
+                float(stars[i].get_attribute('innerHTML').split(' ')[0]))
 
-                starMap: Review_Type = None
+            starMap: Review_Type = None
 
-                if starInt == 1:
-                    starMap = Review_Type.ONE_STAR.name
-                elif starInt == 2:
-                    starMap = Review_Type.TWO_STAR.name
-                elif starInt == 3:
-                    starMap = Review_Type.THREE_STAR.name
-                elif starInt == 4:
-                    starMap = Review_Type.FOUR_STAR.name
-                elif starInt == 5:
-                    starMap = Review_Type.FIVE_STAR.name
+            if starInt == 1:
+                starMap = Review_Type.ONE_STAR.name
+            elif starInt == 2:
+                starMap = Review_Type.TWO_STAR.name
+            elif starInt == 3:
+                starMap = Review_Type.THREE_STAR.name
+            elif starInt == 4:
+                starMap = Review_Type.FOUR_STAR.name
+            elif starInt == 5:
+                starMap = Review_Type.FIVE_STAR.name
 
-                TEMP['data'][starMap].append({
-                    'content': contents[i].get_attribute('innerHTML'),
-                    'rating': starInt
-                })
+            TEMP['data'][starMap].append({
+                'content': contents[i].get_attribute('innerHTML'),
+                'rating': starInt
+            })
 
-            # for star in stars:
-            #     print(star.get_attribute('innerHTML'))
+        # for star in stars:
+        #     print(star.get_attribute('innerHTML'))
 
-            # perform click on button xpath //*[@id="cm_cr-pagination_bar"]/ul/li[2]
-            next_page = driver.find_element(
-                By.XPATH,
-                '//*[@id="cm_cr-pagination_bar"]/ul/li[2]')
+        # perform click on button xpath //*[@id="cm_cr-pagination_bar"]/ul/li[2]
+        next_page = driver.find_element(
+            By.XPATH,
+            '//*[@id="cm_cr-pagination_bar"]/ul/li[2]')
 
-            # check if the next page is disabled
-            if 'a-disabled' in next_page.get_attribute('class'):
-                break
+        # check if the next page is disabled
+        if 'a-disabled' in next_page.get_attribute('class'):
+            break
 
-            next_page = driver.find_element(
-                By.XPATH,
-                '//*[@id="cm_cr-pagination_bar"]/ul/li[2]/a')
+        next_page = driver.find_element(
+            By.XPATH,
+            '//*[@id="cm_cr-pagination_bar"]/ul/li[2]/a')
 
-            # extract href attribute
-            composed_url = next_page.get_attribute('href')
-
-    TEMP['time_taken'] = time.time() - start_time
-    TEMP['last_update'] = str(dateparser.parse(time.ctime()))
-
-    Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP['ibsn']}", TEMP)
-    Firebase.Set_Status(TEMP['ibsn'], Status.COMPLETED, {
-        "last_update": str(dateparser.parse(time.ctime())),
-        "time_taken": TEMP["time_taken"],
-        Review_Type.ONE_STAR.name: len(TEMP['data'][Review_Type.ONE_STAR.name]),
-        Review_Type.TWO_STAR.name: len(TEMP['data'][Review_Type.TWO_STAR.name]),
-        Review_Type.THREE_STAR.name: len(TEMP['data'][Review_Type.THREE_STAR.name]),
-        Review_Type.FOUR_STAR.name: len(TEMP['data'][Review_Type.FOUR_STAR.name]),
-        Review_Type.FIVE_STAR.name: len(TEMP['data'][Review_Type.FIVE_STAR.name]),
-    })
-
-    return TEMP
+        # extract href attribute
+        composed_url = next_page.get_attribute('href')
