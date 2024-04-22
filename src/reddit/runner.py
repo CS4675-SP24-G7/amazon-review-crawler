@@ -21,10 +21,12 @@ options.add_argument('--disable-dev-shm-usage')
 options.add_argument('--no-sandbox')
 options.add_argument('--headless')
 
-driver = webdriver.Remote(
-    command_executor=SELENIUM_BASEURL,
-    options=options
-)
+# driver = webdriver.Remote(
+#     command_executor=SELENIUM_BASEURL,
+#     options=options
+# )
+
+driver = webdriver.Chrome(options=options)
 
 
 def get_comments(product_name="echo dot 3rd gen"):
@@ -72,7 +74,7 @@ def get_comments(product_name="echo dot 3rd gen"):
             if len(btn) > 0:
                 btn[0].click()
 
-        driver.set_page_load_timeout(10)
+        driver.set_page_load_timeout(5)
 
         comments = driver.find_elements(
             By.XPATH, '//shreddit-comment[@depth=0]/div[3]')

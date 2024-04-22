@@ -142,6 +142,9 @@ def filter_handler(f=False):
         scrape_handler()
         data = Firebase.Get_Review(url_processor.Extract_ISBN())
 
+    if not data:
+        return jsonify({'error': 'No data found'}), 400
+
     theData = filter(data)[0]
     Firebase.Set_Filters(url_processor.Extract_ISBN(), theData)
 
@@ -160,11 +163,17 @@ def summary_handler():
     theData = None
 
     if status['status'] == Status.COMPLETED.name and data:
+        print('Go here 1')
         theData = data
     else:
+        print('Go here 2')
+
         filter_handler(f=True)
         data = Firebase.Get_Filters(url_processor.Extract_ISBN())
         theData = data
+
+    if theData == None:
+        return jsonify([{'summary': 'No data found. Please try other products.', 'rating': 'N/A'}]), 200
 
     filteredData_str = "\n".join(theData)
 
@@ -185,20 +194,26 @@ def reddit_summary_handler():
 
     theData = None
 
-    if status['status'] == Status.COMPLETED.name and data:
-        theData = data
-    else:
-        reddit_handler()
-        theData = Firebase.Get_Reddit(url_processor.Extract_ISBN())
+    try:
+        if status['status'] == Status.COMPLETED.name and data:
+            theData = data
+        else:
+            reddit_handler()
+            theData = Firebase.Get_Reddit(url_processor.Extract_ISBN())
 
-    filteredData_str = "\n".join(theData['comments'])
+        if (theData is None or theData['number_of_comments'] == 0):
+            return jsonify([{'summary': 'No data found on Reddit. Please try other products.', 'rating': 'N/A'}]), 200
 
-    summary = gemini_summary(filteredData_str)
-    summary_json = gemini_extract_json(summary)
+        filteredData_str = "\n".join(theData['comments'])
 
-    print(summary_json)
+        summary = gemini_summary(filteredData_str)
+        summary_json = gemini_extract_json(summary)
 
-    return jsonify(summary_json), 200
+        print(summary_json)
+
+        return jsonify(summary_json), 200
+    except Exception as e:
+        return jsonify([{'summary': 'No data found on Reddit. Please try other products.', 'rating': 'N/A'}]), 200
 
 
 @app.route('/ad')

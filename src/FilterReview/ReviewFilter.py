@@ -137,6 +137,8 @@ def filter(reviews):
 
     # new_reviews = get_text(reviews_json)
     new_reviews = getReviews(reviews)
+    if len(new_reviews) == 0:
+        return [[], 0]
     # print(f'Original size: {str(len(new_reviews))}')
     input_reviews_tfidf = tfidf_vectorizer.transform(new_reviews)
     predictions = svm_model.predict(input_reviews_tfidf)
