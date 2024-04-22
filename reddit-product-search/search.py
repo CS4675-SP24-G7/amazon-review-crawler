@@ -6,16 +6,16 @@ import multiprocessing
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from openai import OpenAI
+# from openai import OpenAI
 
 
-# OpenAI relevance evaluation
-client = OpenAI()
+# # OpenAI relevance evaluation
+# client = OpenAI()
 
 def evaluate_relevance(comment, shortened):
     response = client.chat.completions.create(model="gpt-3.5-turbo-0125", messages=[
         {"role": "user",
-         "content": "Respond with 'Y' for yes or 'N' for no: whether the following comment provides a relevant opinion about the specific product, " + shortened + ", that other buyers may want to hear. \n\nComment: " + comment,}
+         "content": "Respond with 'Y' for yes or 'N' for no: whether the following comment provides a relevant opinion about the specific product, " + shortened + ", that other buyers may want to hear. \n\nComment: " + comment, }
     ])
     output = response.choices[0].message.content.strip().lower()[0]
     if output == 'y':
@@ -43,27 +43,33 @@ def parse(url_id, driver, assist_queue, r, shortened):
 
     # Soup parsing
     soup = BeautifulSoup(reddit_response, 'html.parser')
-   
-    ## Setting post information
+
+    # Setting post information
     post_title = soup.find('h1', {'id': re.compile(r'^post-title-t3_.*$')})
     post_title = post_title.get_text().strip() if post_title else None
-    author = soup.find('shreddit-post-overflow-menu', {'author-name': re.compile(r'^.+$')})
+    author = soup.find('shreddit-post-overflow-menu',
+                       {'author-name': re.compile(r'^.+$')})
     author = author.get('author-name', None) if author else None
     if not post_title or not author:
         print(f'Post or author not found at URL: {clean_url}')
         return
-    post_content = soup.find('div', {'id': re.compile(r'^t3_.+-post-rtjson-content$')})
+    post_content = soup.find(
+        'div', {'id': re.compile(r'^t3_.+-post-rtjson-content$')})
     post_content = post_content.get_text().strip() if post_content else None
 
-    ## Forming comment dictionary
-    comment_elems = soup.find_all('shreddit-comment', {'author': re.compile(r"^.+$")})
+    # Forming comment dictionary
+    comment_elems = soup.find_all(
+        'shreddit-comment', {'author': re.compile(r"^.+$")})
     commenters = []
     comments = {}
     if comment_elems:
         for tag in comment_elems:
-            if tag['author'] == "[deleted]": continue
-            content = soup.find('div', {'id': tag['thingid']+"-comment-rtjson-content"}).get_text().strip()
-            if content and evaluate_relevance(content, shortened) == False: continue
+            if tag['author'] == "[deleted]":
+                continue
+            content = soup.find(
+                'div', {'id': tag['thingid']+"-comment-rtjson-content"}).get_text().strip()
+            if content and evaluate_relevance(content, shortened) == False:
+                continue
             comments[tag['author']] = {
                 "Comment ID": tag['thingid'],
                 "Parent ID": tag.get('parentid', None),
@@ -77,13 +83,13 @@ def parse(url_id, driver, assist_queue, r, shortened):
         'Link': clean_url,
         'Title': post_title,
         'Content': post_content,
-        'Opinion': evaluate_relevance(post_opinion, shortened), 
+        'Opinion': evaluate_relevance(post_opinion, shortened),
         'Author': author,
         'Comments': comments,
         'Authenticity Metrics': {},
     }
 
-    r[id] = json.dumps(post_details) # Set the dictionary in manager array
+    r[id] = json.dumps(post_details)  # Set the dictionary in manager array
 
     users = list(set(commenters))
     users.append(author)
@@ -117,12 +123,14 @@ def parse_user(user, driver, r, id):
     # Scrape and add to result string
     soup = BeautifulSoup(html, 'html.parser')
     moderating = soup.find('h2', text=re.compile(r'^.*Moderator.*$'))
-    moderating = len(moderating.find_next_sibling().contents) if moderating else None
+    moderating = len(
+        moderating.find_next_sibling().contents) if moderating else None
 
-    if soup.find('shreddit-forbidden', {'reason': '"BANNED"'}): return None
+    if soup.find('shreddit-forbidden', {'reason': '"BANNED"'}):
+        return None
     metrics = {
         "Total Karma": sum([int(tag.get_text().strip().replace(",", "")) for tag in soup.find_all('span', {'data-testid': 'karma-number'})]),
-        "Cake Day": soup.find('time', {'data-testid': 'cake-day'})['datetime'], 
+        "Cake Day": soup.find('time', {'data-testid': 'cake-day'})['datetime'],
         "Bio": True if soup.find('p', {'data-testid': 'profile-description'}) else False,
         "Communities Moderating": moderating,
         "Trophy Count": len(soup.find('ul', {'slot': 'initial-trophies'}).contents),
@@ -130,17 +138,19 @@ def parse_user(user, driver, r, id):
 
     # Placing into shared memory string
     pattern = r'"Authenticity Metrics": (\{.*?\})'
-    authenticity_metrics = json.loads(re.search(pattern, r[id], re.DOTALL).group(1))
+    authenticity_metrics = json.loads(
+        re.search(pattern, r[id], re.DOTALL).group(1))
     authenticity_metrics[user] = metrics
     updated_metrics = json.dumps(authenticity_metrics)
-    r[id] = re.sub(pattern, f'"Authenticity Metrics": {updated_metrics}', r[id], flags=re.DOTALL)
-
+    r[id] = re.sub(
+        pattern, f'"Authenticity Metrics": {updated_metrics}', r[id], flags=re.DOTALL)
 
 
 def session(url_queue, assist_queue, r, shortened):
     # Configure a remote WebDriver
     options = webdriver.ChromeOptions()
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36" #TODO: fake user agent string
+    # TODO: fake user agent string
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"
     options.add_argument(f'user-agent={user_agent}')
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
@@ -160,8 +170,8 @@ def session(url_queue, assist_queue, r, shortened):
                 driver.quit()
                 break
             parse(url_id, driver, assist_queue, r, shortened)
-       
-       
+
+
 def run_parallel_parsing(urls, processes, shortened):
     url_queue = multiprocessing.Queue()
     assist_queue = multiprocessing.Queue()
@@ -173,7 +183,8 @@ def run_parallel_parsing(urls, processes, shortened):
     sessions = []
     for _ in range(processes):
         # Start driver process
-        process = multiprocessing.Process(target=session, args=(url_queue, assist_queue, r, shortened))
+        process = multiprocessing.Process(
+            target=session, args=(url_queue, assist_queue, r, shortened))
         process.start()
         sessions.append(process)
 
@@ -221,7 +232,3 @@ if __name__ == '__main__':
     # Final touches
     end = time.time()
     print(f"Execution time: {end - start} seconds")
-
-
-   
-

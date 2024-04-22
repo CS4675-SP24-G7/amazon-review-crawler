@@ -21,6 +21,30 @@ jobs:
             - name: Configure docker
               run: gcloud auth configure-docker us-east1-docker.pkg.dev
 
+            # Pull the Docker image from Docker Hub
+            - name: Pull Selenium Chrome Docker Image
+              run: docker pull selenium/standalone-chrome
+
+            # Tag the image for Artifact Registry
+            - name: Tag Docker Image
+              run: |
+                  IMAGE_NAME="us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
+                  docker tag selenium/standalone-chrome $IMAGE_NAME
+
+            # Push the image to Artifact Registry
+            - name: Push Docker Image to Artifact Registry
+              run: |
+                  IMAGE_NAME="us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
+                  docker push $IMAGE_NAME
+
+            - name: Deploy server to Cloud Run
+              uses: "google-github-actions/deploy-cloudrun@v1"
+              with:
+                  project_id: ${{ secrets.PROJECT_ID }}
+                  service: "sele"
+                  region: "us-east4"
+                  image: "us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
+
             - name: Generate JSON files
               working-directory: ./
               env:
