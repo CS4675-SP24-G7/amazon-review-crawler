@@ -53,6 +53,9 @@ class Firebase:
     # get value of key "filtered" inside COMPLETED/ISBN
     def Get_Filters(self, ISBN):
         return self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/filtered").get()
+    
+    def Get_Reddit(self, ISBN):
+        return self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/reddit").get()
 
     # set value of key "filtered" inside COMPLETED/ISBN
     def Set_Filters(self, ISBN, filters):

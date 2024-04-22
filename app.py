@@ -173,6 +173,29 @@ def summary_handler():
 
     return jsonify(summary_json), 200
 
+@app.route('/reddit_summary')
+def reddit_summary_handler():
+    
+        url = request.args.get('url', None)
+    
+        url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+        status = Firebase.Get_Status(url_processor.Extract_ISBN())
+        data = Firebase.Get_Reddit(url_processor.Extract_ISBN())
+    
+        theData = None
+    
+        if status['status'] == Status.COMPLETED.name and data:
+            theData = data
+        else:
+            reddit_handler()
+            theData = Firebase.Get_Reddit(url_processor.Extract_ISBN())
+    
+        filteredData_str = "\n".join(theData['comments'])
+    
+        summary = gemini_summary(filteredData_str)
+        summary_json = gemini_extract_json(summary)
+    
+        return jsonify(summary_json), 200
 
 @app.route('/ad')
 def ad_handler():
