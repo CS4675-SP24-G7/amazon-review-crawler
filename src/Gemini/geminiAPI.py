@@ -33,6 +33,14 @@ Condition 3: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
 
+GENERATE_REDDIT_SUMMARY = """
+Make a summary from the provided reviews data. 
+Condition 1: Give me a summary of no more than 10 sentences.
+Condition 2: On a scale of 0 to 5, give me the average rating of the reviews.
+Condition 3: No markdown, no HTML, no special characters.
+Only use the provided resources.
+"""
+
 GENERATE_A_D = """
 Make me Advantage, and Disadvantage from the provided reviews data. 
 Condition 1: no more than 5 advantages, no more than 5 disadvantages.
