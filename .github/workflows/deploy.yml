@@ -19,32 +19,27 @@ jobs:
                   credentials_json: "${{ secrets.GG_CREDENTIAL }}"
 
             - name: Configure docker
-              run: gcloud auth configure-docker us-east1-docker.pkg.dev
+              run: gcloud auth configure-docker us-east4-docker.pkg.dev
 
-
-
-
-
-              
             # Pull Docker image from Docker Hub
             - name: Pull Selenium Docker Image
               uses: docker/build-push-action@v2
               with:
-                push: false
-                tags: selenium/standalone-chrome:latest
+                  push: false
+                  tags: selenium/standalone-chrome:latest
 
             # Tag the image for Artifact Registry
             - name: Tag Docker Image for Artifact Registry
               run: |
-                IMAGE_NAME="us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
-                docker tag selenium/standalone-chrome:latest $IMAGE_NAME
+                  IMAGE_NAME="us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
+                  docker tag selenium/standalone-chrome:latest $IMAGE_NAME
 
             # Push the image to Artifact Registry
             - name: Push Docker Image to Artifact Registry
               uses: docker/build-push-action@v2
               with:
-                push: true
-                tags: "us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
+                  push: true
+                  tags: "us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
 
             - name: Deploy server to Cloud Run
               uses: "google-github-actions/deploy-cloudrun@v1"
@@ -54,10 +49,8 @@ jobs:
                   region: "us-east4"
                   image: "us-east4-docker.pkg.dev/${{ secrets.PROJECT_ID }}/sele/runner:latest"
 
-
-
-
-
+            - name: Configure docker
+              run: gcloud auth configure-docker us-east1-docker.pkg.dev
 
             - name: Generate JSON files
               working-directory: ./
