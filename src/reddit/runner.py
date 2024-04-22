@@ -2,6 +2,9 @@ import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+import json
+
+SELENIUM_BASEURL = "http://localhost:4444/wd/hub"
 
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
 
@@ -16,15 +19,17 @@ options.add_argument("--start-maximized")
 options.add_argument('--disable-gpu')
 options.add_argument('--disable-dev-shm-usage')
 options.add_argument('--no-sandbox')
-# options.add_argument('--headless')
+options.add_argument('--headless')
 
 driver = webdriver.Remote(
-    command_executor='http://127.0.0.1:4444/wd/hub',
+    command_executor=SELENIUM_BASEURL,
     options=options
 )
 
 
 def get_comments(product_name="echo dot 3rd gen"):
+
+    start_time = time.time()
 
     product_name = product_name.replace(" ", "+")
 
@@ -32,7 +37,7 @@ def get_comments(product_name="echo dot 3rd gen"):
         f"https://www.google.com/search?q=site%3Areddit.com+{product_name}")
 
     links = driver.find_elements(
-        By.XPATH, '//*[@id="rso"]/div[*]/div/div/div[1]/div/div/span/a')
+        By.XPATH, '//div[@class="yuRUbf"]//a')
 
     hrefs = [link.get_attribute("href") for link in links]
 
@@ -73,10 +78,11 @@ def get_comments(product_name="echo dot 3rd gen"):
             By.XPATH, '//shreddit-comment[@depth=0]/div[3]')
 
         for comment in comments:
-            print(comment.text)
-            all_comments.append(comment.text)
+            if comment.text.strip() != "":
+                all_comments.append(comment.text)
 
-    return all_comments
-
-
-get_comments("samsung galaxy s24 ultra")
+    return {
+        "comments": all_comments,
+        "number_of_comments": len(all_comments),
+        "time": time.time() - start_time,
+    }
