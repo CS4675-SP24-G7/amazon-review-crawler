@@ -1,3 +1,4 @@
+from ssl import Options
 import time
 import selectorlib
 import requests
@@ -8,6 +9,14 @@ from src.Shared import Status, Review_Type
 import src.firebase as firebase
 import threading
 import random
+# fake user agents
+from fake_useragent import UserAgent
+# import beautifulsoup
+from bs4 import BeautifulSoup
+# import selenium
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+
 
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
 
@@ -27,25 +36,41 @@ user_agent_list = [
 
 
 def scrape(url):
-    headers = {
-        'authority': 'www.amazon.com',
-        'pragma': 'no-cache',
-        'cache-control': 'no-cache',
-        'dnt': '1',
-        'upgrade-insecure-requests': '1',
-        'user-agent': random.choices(user_agent_list)[0]['ua'],
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'sec-fetch-site': 'none',
-        'sec-fetch-mode': 'navigate',
-        'sec-fetch-dest': 'document',
-        'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
-    }
+    ua = UserAgent()
+    # uag_random = ua.random
+    uag_random = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0"
 
     # load cookies.json from /cred folder
     with open('cred/cookies.json') as f:
         cookies = json.load(f)
 
-    r = requests.get(url, headers=headers, cookies=cookies)
+    isCaptcha = True
+    while isCaptcha:
+        header = {
+            'authority': 'www.amazon.com',
+            'pragma': 'no-cache',
+            'cache-control': 'no-cache',
+            'dnt': '1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': uag_random,
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            'sec-fetch-site': 'none',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-dest': 'document',
+            'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+        }
+        r = requests.get(url, headers=header, cookies=cookies)
+        assert r.status_code == 200
+        soup = BeautifulSoup(r.content, 'lxml')
+        if 'captcha' in str(soup):
+            uag_random = ua.random
+            print("bot detected")
+            # print(
+            # f'\rBot has been detected... retrying ... use new identity: {uag_random} ', end='', flush=True)
+            continue
+        else:
+            print('Bot bypassed')
+
     # Simple check to check if page was blocked (Usually 503)
     if r.status_code > 500:
         if "To discuss automated access to Amazon data please contact" in r.text:
@@ -120,46 +145,211 @@ def scrape_thread(url_processor: URL_Processor, temp_data, Firebase: firebase.Fi
     # temp_data.append(data)
 
 
-def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
-    start_time = time.time()
-    threads = []
+# def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
+#     start_time = time.time()
+#     threads = []
 
-    TEMP_DATA = {
-        "ibsn": "",
+#     TEMP_DATA = {
+#         "ibsn": "",
+#         "last_update": "",
+#         "time_taken": 0,
+#         "product_title": "",
+#         "product_url": "",
+#         "data": {
+#                 Review_Type.ONE_STAR.name: [],
+#                 Review_Type.TWO_STAR.name: [],
+#                 Review_Type.THREE_STAR.name: [],
+#                 Review_Type.FOUR_STAR.name: [],
+#                 Review_Type.FIVE_STAR.name: []
+#         }
+#     }
+
+#     for url_processor in urls:
+#         thread = threading.Thread(
+#             target=scrape_thread, args=(url_processor, TEMP_DATA, Firebase))
+#         thread.start()
+#         threads.append(thread)
+
+#     for thread in threads:
+#         thread.join()
+
+#     TEMP_DATA['time_taken'] = time.time() - start_time
+#     TEMP_DATA['last_update'] = str(dateparser.parse(time.ctime()))
+
+#     Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP_DATA['ibsn']}", TEMP_DATA)
+#     Firebase.Set_Status(url_processor.IBSN, Status.COMPLETED, {
+#         "last_update": str(dateparser.parse(time.ctime())),
+#         "time_taken": TEMP_DATA["time_taken"],
+#         Review_Type.ONE_STAR.name: len(TEMP_DATA['data'][Review_Type.ONE_STAR.name]),
+#         Review_Type.TWO_STAR.name: len(TEMP_DATA['data'][Review_Type.TWO_STAR.name]),
+#         Review_Type.THREE_STAR.name: len(TEMP_DATA['data'][Review_Type.THREE_STAR.name]),
+#         Review_Type.FOUR_STAR.name: len(TEMP_DATA['data'][Review_Type.FOUR_STAR.name]),
+#         Review_Type.FIVE_STAR.name: len(TEMP_DATA['data'][Review_Type.FIVE_STAR.name]),
+#     })
+
+#     return TEMP_DATA
+
+
+def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
+
+    chrome_options = webdriver.ChromeOptions()
+
+    # chrome_options.add_argument("--headless")
+
+    # Set the custom User-Agent
+    my_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0"
+    chrome_options.add_argument(f"--user-agent={my_user_agent}")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+
+    composed_url = urls[0].Compose_Review_URL()
+    original_url = f"{composed_url}/"
+    print(composed_url)
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get("https://amazon.com")
+    driver.implicitly_wait(10)
+
+    TEMP = {
+        "ibsn": urls[0].IBSN,
         "last_update": "",
         "time_taken": 0,
         "product_title": "",
-        "product_url": "",
+        "product_url": original_url,
         "data": {
-                Review_Type.ONE_STAR.name: [],
-                Review_Type.TWO_STAR.name: [],
-                Review_Type.THREE_STAR.name: [],
-                Review_Type.FOUR_STAR.name: [],
-                Review_Type.FIVE_STAR.name: []
+            Review_Type.ONE_STAR.name: [],
+            Review_Type.TWO_STAR.name: [],
+            Review_Type.THREE_STAR.name: [],
+            Review_Type.FOUR_STAR.name: [],
+            Review_Type.FIVE_STAR.name: []
         }
     }
+    start_time = time.time()
 
-    for url_processor in urls:
-        thread = threading.Thread(
-            target=scrape_thread, args=(url_processor, TEMP_DATA, Firebase))
-        thread.start()
-        threads.append(thread)
+# https://www.amazon.com/Nike-Womens-Running-Metallic-Numeric_12/product-reviews/B01AMT0EYU/filterByStar=five_star
+    while True:
+        driver.get(composed_url)
 
-    for thread in threads:
-        thread.join()
+        if TEMP['product_title'] == "":
+            TEMP['product_title'] = driver.find_element(
+                By.XPATH,
+                '//*[@data-hook="product-link"]').get_attribute('innerHTML')
 
-    TEMP_DATA['time_taken'] = time.time() - start_time
-    TEMP_DATA['last_update'] = str(dateparser.parse(time.ctime()))
+        stars = driver.find_elements(
+            By.XPATH,
+            '//*[@data-hook="review"]/div/div/div[2]/a/i/span')
 
-    Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP_DATA['ibsn']}", TEMP_DATA)
-    Firebase.Set_Status(url_processor.IBSN, Status.COMPLETED, {
+        contents = driver.find_elements(
+            By.XPATH,
+            '//*[@data-hook="review"]/div/div/div[4]/span/span')
+
+        for i in range(min(len(stars), len(contents))):
+            starInt = int(
+                float(stars[i].get_attribute('innerHTML').split(' ')[0]))
+
+            starMap: Review_Type = None
+
+            if starInt == 1:
+                starMap = Review_Type.ONE_STAR.name
+            elif starInt == 2:
+                starMap = Review_Type.TWO_STAR.name
+            elif starInt == 3:
+                starMap = Review_Type.THREE_STAR.name
+            elif starInt == 4:
+                starMap = Review_Type.FOUR_STAR.name
+            elif starInt == 5:
+                starMap = Review_Type.FIVE_STAR.name
+
+            TEMP['data'][starMap].append({
+                'content': contents[i].get_attribute('innerHTML'),
+                'rating': starInt
+            })
+
+        # for star in stars:
+        #     print(star.get_attribute('innerHTML'))
+
+        # perform click on button xpath //*[@id="cm_cr-pagination_bar"]/ul/li[2]
+        next_page = driver.find_element(
+            By.XPATH,
+            '//*[@id="cm_cr-pagination_bar"]/ul/li[2]')
+
+        # check if the next page is disabled
+        if 'a-disabled' in next_page.get_attribute('class'):
+            break
+
+        next_page = driver.find_element(
+            By.XPATH,
+            '//*[@id="cm_cr-pagination_bar"]/ul/li[2]/a')
+
+        # extract href attribute
+        composed_url = next_page.get_attribute('href')
+
+    for review_type in Review_Type:
+        composed_url = f"{original_url}?filterByStar={review_type.name.lower()}"
+
+        while True:
+            driver.get(composed_url)
+
+            stars = driver.find_elements(
+                By.XPATH,
+                '//*[@data-hook="review"]/div/div/div[2]/a/i/span')
+
+            contents = driver.find_elements(
+                By.XPATH,
+                '//*[@data-hook="review"]/div/div/div[4]/span/span')
+
+            for i in range(min(len(stars), len(contents))):
+                starInt = int(
+                    float(stars[i].get_attribute('innerHTML').split(' ')[0]))
+
+                starMap: Review_Type = None
+
+                if starInt == 1:
+                    starMap = Review_Type.ONE_STAR.name
+                elif starInt == 2:
+                    starMap = Review_Type.TWO_STAR.name
+                elif starInt == 3:
+                    starMap = Review_Type.THREE_STAR.name
+                elif starInt == 4:
+                    starMap = Review_Type.FOUR_STAR.name
+                elif starInt == 5:
+                    starMap = Review_Type.FIVE_STAR.name
+
+                TEMP['data'][starMap].append({
+                    'content': contents[i].get_attribute('innerHTML'),
+                    'rating': starInt
+                })
+
+            # for star in stars:
+            #     print(star.get_attribute('innerHTML'))
+
+            # perform click on button xpath //*[@id="cm_cr-pagination_bar"]/ul/li[2]
+            next_page = driver.find_element(
+                By.XPATH,
+                '//*[@id="cm_cr-pagination_bar"]/ul/li[2]')
+
+            # check if the next page is disabled
+            if 'a-disabled' in next_page.get_attribute('class'):
+                break
+
+            next_page = driver.find_element(
+                By.XPATH,
+                '//*[@id="cm_cr-pagination_bar"]/ul/li[2]/a')
+
+            # extract href attribute
+            composed_url = next_page.get_attribute('href')
+
+    TEMP['time_taken'] = time.time() - start_time
+    TEMP['last_update'] = str(dateparser.parse(time.ctime()))
+
+    Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP['ibsn']}", TEMP)
+    Firebase.Set_Status(TEMP['ibsn'], Status.COMPLETED, {
         "last_update": str(dateparser.parse(time.ctime())),
-        "time_taken": TEMP_DATA["time_taken"],
-        Review_Type.ONE_STAR.name: len(TEMP_DATA['data'][Review_Type.ONE_STAR.name]),
-        Review_Type.TWO_STAR.name: len(TEMP_DATA['data'][Review_Type.TWO_STAR.name]),
-        Review_Type.THREE_STAR.name: len(TEMP_DATA['data'][Review_Type.THREE_STAR.name]),
-        Review_Type.FOUR_STAR.name: len(TEMP_DATA['data'][Review_Type.FOUR_STAR.name]),
-        Review_Type.FIVE_STAR.name: len(TEMP_DATA['data'][Review_Type.FIVE_STAR.name]),
+        "time_taken": TEMP["time_taken"],
+        Review_Type.ONE_STAR.name: len(TEMP['data'][Review_Type.ONE_STAR.name]),
+        Review_Type.TWO_STAR.name: len(TEMP['data'][Review_Type.TWO_STAR.name]),
+        Review_Type.THREE_STAR.name: len(TEMP['data'][Review_Type.THREE_STAR.name]),
+        Review_Type.FOUR_STAR.name: len(TEMP['data'][Review_Type.FOUR_STAR.name]),
+        Review_Type.FIVE_STAR.name: len(TEMP['data'][Review_Type.FIVE_STAR.name]),
     })
 
-    return TEMP_DATA
+    return TEMP

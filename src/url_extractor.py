@@ -40,8 +40,9 @@ class URL_Processor():
                         reviewerType=avp_only_reviews
                         filterByStar=five_star
         """
-        base_url = f"https://www.amazon.com/product-reviews/{self.IBSN}/ref=cm_cr_arp_d_paging_btm_next_{self.Page_Number}?ie=UTF8&reviewerType=avp_only_reviews"
-        Review_Type = f"filterByStar={self.Review_Type.name.lower()}"
-        Page_Number = f"pageNumber={self.Page_Number}"
-        self.Review_URL = f"{base_url}&{Review_Type}&{Page_Number}"
-        return self.Review_URL
+        # base_url = f"https://www.amazon.com/product-reviews/{self.IBSN}/ref=cm_cr_getr_d_paging_btm_next_{self.Page_Number}?ie=UTF8&reviewerType=all_reviews"
+        # Review_Type = f"filterByStar={self.Review_Type.name.lower()}"
+        # Page_Number = f"pageNumber={self.Page_Number}"
+        # self.Review_URL = f"{base_url}&{Page_Number}&{Review_Type}"
+        # return self.Review_URL
+        return f"https://www.amazon.com/product-reviews/{self.IBSN}"
