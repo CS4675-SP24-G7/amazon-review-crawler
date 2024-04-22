@@ -6,6 +6,7 @@ import src.firebase as firebase
 from src.scraper import to_json, multi_threaded_scrape
 from src.FilterReview.ReviewFilter import *
 from src.Gemini.geminiAPI import *
+from src.reddit import runner as reddit
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -88,6 +89,33 @@ def scrape_handler():
     results = multi_threaded_scrape(urls, Firebase)
 
     return jsonify(results), 200
+
+
+@app.route('/reddit')
+def reddit_handler():
+    url = request.args.get('url', None)
+    force = request.args.get('force', 'False').lower() == 'true'
+
+    url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+    status = Firebase.Get_Status(url_processor.Extract_ISBN())
+    data = Firebase.Get_Review(url_processor.Extract_ISBN())
+
+    if not force and status['status'] == Status.COMPLETED.name and data:
+        if 'reddit' in data and data['reddit'] != '':
+            return jsonify(data['reddit']), 200
+        else:
+            result = reddit.get_comments(data['product_title'])
+            Firebase.Insert(
+                f"{Status.COMPLETED.name}/{url_processor.Extract_ISBN()}/reddit", result)
+            return jsonify(result), 200
+
+    scrape_handler()
+    data = Firebase.Get_Review(url_processor.Extract_ISBN())
+    result = reddit.get_comments(data['product_title'])
+    Firebase.Insert(
+        f"{Status.COMPLETED.name}/{url_processor.Extract_ISBN()}/reddit", result)
+
+    return jsonify(result), 200
 
 
 @app.route('/filter')
