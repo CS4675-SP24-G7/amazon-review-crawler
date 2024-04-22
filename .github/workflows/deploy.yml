@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
     push:
         branches:
-            - "main"
+            - "reddit2"
 
 jobs:
     build:
