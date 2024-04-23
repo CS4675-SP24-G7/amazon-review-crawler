@@ -224,6 +224,7 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
         "time_taken": 0,
         "product_title": "",
         "product_url": original_url.replace("/product-reviews/", "/dp/"),
+        "original_rating": -1,
         "data": {
             Review_Type.ONE_STAR.name: [],
             Review_Type.TWO_STAR.name: [],
@@ -258,7 +259,6 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
     for review_type in Review_Type:
         TEMP['data'][review_type.name] = list(
             {v['content']: v for v in TEMP['data'][review_type.name]}.values())
-        
 
     Firebase.Insert(f"{Status.COMPLETED.name}/{TEMP['ibsn']}", TEMP)
     Firebase.Set_Status(TEMP['ibsn'], Status.COMPLETED, {
@@ -282,6 +282,11 @@ def first_page_scrape(driver, composed_url, TEMP):
             TEMP['product_title'] = driver.find_element(
                 By.XPATH,
                 '//*[@data-hook="product-link"]').get_attribute('innerHTML')
+
+        if TEMP['original_rating'] == -1:
+            TEMP['original_rating'] = float(driver.find_element(
+                By.XPATH,
+                '//*[@data-hook="average-star-rating"]/span').get_attribute('innerHTML').split(' ')[0])
 
         stars = driver.find_elements(
             By.XPATH,

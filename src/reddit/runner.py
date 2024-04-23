@@ -7,9 +7,9 @@ import threading
 
 SELENIUM_BASEURL = "http://localhost:4444/wd/hub"
 
+
 def init_driver():
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
-
 
     options = webdriver.ChromeOptions()
     options.add_argument(f'user-agent={user_agent}')
@@ -59,11 +59,12 @@ def get_comments(product_name="echo dot 3rd gen"):
 
     # open each link and get the comments
     for i, href in enumerate(hrefs):
-        
-        th = threading.Thread(target=single_scrape, args=(init_driver(), href, all_comments))
+
+        th = threading.Thread(target=single_scrape, args=(
+            init_driver(), href, all_comments))
         jobs.append(th)
         th.start()
-    
+
     for job in jobs:
         job.join()
 
@@ -72,6 +73,7 @@ def get_comments(product_name="echo dot 3rd gen"):
         "number_of_comments": len(all_comments),
         "time": time.time() - start_time,
     }
+
 
 def single_scrape(driver, url, ALL_COMMENTS):
     driver.get(url)
@@ -100,7 +102,7 @@ def single_scrape(driver, url, ALL_COMMENTS):
 
     comments = driver.find_elements(
         By.XPATH, '//shreddit-comment[@depth=0]/div[3]')
-    
+
     for comment in comments:
         if comment.text.strip() != "":
             ALL_COMMENTS.append(comment.text)

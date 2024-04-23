@@ -151,6 +151,21 @@ def filter_handler(f=False):
     return jsonify(theData), 200
 
 
+@app.route('/product_details')
+def product_details_handler():
+    url = request.args.get('url', None)
+
+    url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
+    status = Firebase.Get_Status(url_processor.Extract_ISBN())
+    data = Firebase.Get_Product_Details(url_processor.IBSN)
+
+    if not data:
+        return jsonify({'error': 'No data found'}), 400
+
+    print(data)
+    return jsonify([data]), 200
+
+
 @app.route('/summary')
 def summary_handler():
 
@@ -177,7 +192,7 @@ def summary_handler():
 
     filteredData_str = "\n".join(theData)
 
-    summary = gemini_summary(filteredData_str)
+    summary = gemini_summary(filteredData_str, Firebase)
     summary_json = gemini_extract_json(summary)
 
     return jsonify(summary_json), 200
@@ -206,7 +221,7 @@ def reddit_summary_handler():
 
         filteredData_str = "\n".join(theData['comments'])
 
-        summary = gemini_summary(filteredData_str)
+        summary = gemini_summary(filteredData_str, Firebase)
         summary_json = gemini_extract_json(summary)
 
         print(summary_json)
@@ -236,7 +251,7 @@ def ad_handler():
 
     filteredData_str = "\n".join(theData)
 
-    summary = gemini_a_d(filteredData_str)
+    summary = gemini_a_d(filteredData_str, Firebase)
     summary_json = gemini_extract_json(summary)
 
     return jsonify(summary_json), 200
@@ -262,7 +277,7 @@ def decision_handler():
 
     filteredData_str = "\n".join(theData)
 
-    summary = gemini_decision(filteredData_str)
+    summary = gemini_decision(filteredData_str, Firebase)
     summary_json = gemini_extract_json(summary)
 
     return jsonify(summary_json), 200

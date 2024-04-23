@@ -4,7 +4,6 @@ import random
 import re
 import json
 
-
 JSON_MODEL_A_D = """
 Provide a response in a structured JSON format that matches the following model:
 {"advantages": ["advantage 1", "advantage 2", "advantage 2", ...],
@@ -28,7 +27,7 @@ and reason is a string, explains why buying_decision is made.
 GENERATE_SUMMARY = """
 Make a summary from the provided reviews data. 
 Condition 1: Give me a summary of no more than 10 sentences.
-Condition 2: On a scale of 0 to 5, give me the average rating of the reviews.
+Condition 2: On a scale of 0 to 5, give me the average rating of the reviews. Where 0 is the worst and 5 is the best.
 Condition 3: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
@@ -36,7 +35,7 @@ Only use the provided resources.
 GENERATE_REDDIT_SUMMARY = """
 Make a summary from the provided reviews data. 
 Condition 1: Give me a summary of no more than 10 sentences.
-Condition 2: On a scale of 0 to 5, give me the average rating of the reviews.
+Condition 2: On a scale of 0 to 5, give me the average rating of the reviews. Where 0 is the worst and 5 is the best.
 Condition 3: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
@@ -57,7 +56,18 @@ Only use the provided resources.
 """
 
 
-def init_gemini():
+def update_key(Firebase):
+    key_used_time = Firebase.Get_Gemini_Used_Time()
+    if key_used_time == None:
+        key_used_time = 0
+        Firebase.Update_Gemini_Used_Time(key_used_time)
+    else:
+        key_used_time = key_used_time + 1
+        Firebase.Update_Gemini_Used_Time(key_used_time)
+    return key_used_time
+
+
+def init_gemini(used_time):
     import google.generativeai as genai
 
     # read gemini "key" from gemini.json in cred
@@ -65,7 +75,7 @@ def init_gemini():
         gemini_keys = json.load(file)["keys"]
 
     # randon key from list of key
-    key = random.choice(gemini_keys)
+    key = gemini_keys[used_time % len(gemini_keys)]
 
     # print(f"Using key {key}")
 
@@ -86,8 +96,11 @@ def init_gemini():
     return model
 
 
-def gemini_summary(data):
-    model = init_gemini()
+def gemini_summary(data, Firebase):
+
+    key_used_time = update_key(Firebase)
+
+    model = init_gemini(key_used_time)
 
     convo = model.start_chat(history=[])
     convo.send_message(
@@ -96,8 +109,11 @@ def gemini_summary(data):
     return convo.last.text
 
 
-def gemini_a_d(data):
-    model = init_gemini()
+def gemini_a_d(data, Firebase):
+
+    key_used_time = update_key(Firebase)
+
+    model = init_gemini(key_used_time)
 
     convo = model.start_chat(history=[])
     convo.send_message(f"{GENERATE_A_D}\n{JSON_MODEL_A_D}\nDATA: {data}")
@@ -105,8 +121,11 @@ def gemini_a_d(data):
     return convo.last.text
 
 
-def gemini_decision(data):
-    model = init_gemini()
+def gemini_decision(data, Firebase):
+
+    key_used_time = update_key(Firebase)
+
+    model = init_gemini(key_used_time)
 
     convo = model.start_chat(history=[])
     convo.send_message(

@@ -53,7 +53,7 @@ class Firebase:
     # get value of key "filtered" inside COMPLETED/ISBN
     def Get_Filters(self, ISBN):
         return self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/filtered").get()
-    
+
     def Get_Reddit(self, ISBN):
         return self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/reddit").get()
 
@@ -65,3 +65,17 @@ class Firebase:
 
     def Set_Field(self, path, field, value):
         self.ref.child(path).update({field: value})
+
+    def Get_Gemini_Used_Time(self):
+        return self.ref.child("GEMINI/USED").get()
+
+    def Update_Gemini_Used_Time(self, time):
+        self.ref.child("GEMINI").update({"USED": time})
+
+    def Get_Product_Details(self, ISBN):
+        return {
+            "product_title": self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/product_title").get(),
+            "product_url": self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/product_url").get(),
+            "last_update": self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/last_update").get(),
+            "original_rating": self.ref.child(f"{Status.COMPLETED.name}/{ISBN}/original_rating").get(),
+        }
