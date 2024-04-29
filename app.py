@@ -19,7 +19,7 @@ Firebase = firebase.Firebase()
 
 @app.route('/')
 def index():
-    return 'Welcome to Amazon Review Scraper API'
+    return "Welcome to Amazon Review Scraper API!"
 
 
 @app.route('/get_status')
@@ -162,7 +162,7 @@ def product_details_handler():
     if not data:
         return jsonify({'error': 'No data found'}), 400
 
-    print(data)
+    # print(data)
     return jsonify([data]), 200
 
 
@@ -174,14 +174,16 @@ def summary_handler():
     url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
     status = Firebase.Get_Status(url_processor.Extract_ISBN())
     data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+    original_rating = Firebase.Get_Product_Details(
+        url_processor.Extract_ISBN())['original_rating']
 
     theData = None
 
     if status['status'] == Status.COMPLETED.name and data:
-        print('Go here 1')
+        # print('Go here 1')
         theData = data
     else:
-        print('Go here 2')
+        # print('Go here 2')
 
         filter_handler(f=True)
         data = Firebase.Get_Filters(url_processor.Extract_ISBN())
@@ -192,7 +194,7 @@ def summary_handler():
 
     filteredData_str = "\n".join(theData)
 
-    summary = gemini_summary(filteredData_str, Firebase)
+    summary = gemini_summary(filteredData_str, original_rating, Firebase)
     summary_json = gemini_extract_json(summary)
 
     return jsonify(summary_json), 200
@@ -206,6 +208,8 @@ def reddit_summary_handler():
     url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
     status = Firebase.Get_Status(url_processor.Extract_ISBN())
     data = Firebase.Get_Reddit(url_processor.Extract_ISBN())
+    product_details = Firebase.Get_Product_Details(
+        url_processor.Extract_ISBN())
 
     theData = None
 
@@ -221,10 +225,11 @@ def reddit_summary_handler():
 
         filteredData_str = "\n".join(theData['comments'])
 
-        summary = gemini_summary(filteredData_str, Firebase)
+        summary = gemini_reddit_summary(
+            filteredData_str, product_details['product_title'], product_details['original_rating'], Firebase)
         summary_json = gemini_extract_json(summary)
 
-        print(summary_json)
+        # print(summary_json)
 
         return jsonify(summary_json), 200
     except Exception as e:
@@ -265,6 +270,8 @@ def decision_handler():
     url_processor = URL_Processor(url, Review_Type.FIVE_STAR, 0)
     status = Firebase.Get_Status(url_processor.Extract_ISBN())
     data = Firebase.Get_Filters(url_processor.Extract_ISBN())
+    product_details = Firebase.Get_Product_Details(
+        url_processor.Extract_ISBN())
 
     theData = None
 
@@ -277,7 +284,8 @@ def decision_handler():
 
     filteredData_str = "\n".join(theData)
 
-    summary = gemini_decision(filteredData_str, Firebase)
+    summary = gemini_decision(
+        filteredData_str, product_details['original_rating'], Firebase)
     summary_json = gemini_extract_json(summary)
 
     return jsonify(summary_json), 200

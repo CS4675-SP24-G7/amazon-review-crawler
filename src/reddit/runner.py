@@ -5,31 +5,27 @@ from selenium.webdriver.chrome.service import Service
 import json
 import threading
 
-SELENIUM_BASEURL = "http://localhost:4444/wd/hub"
+SELENIUM_BASEURL = "http://172.17.0.1:4444/wd/hub"
 
 
 def init_driver():
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
-
     options = webdriver.ChromeOptions()
-    options.add_argument(f'user-agent={user_agent}')
-    options.add_argument('--ignore-certificate-errors')
-    options.add_argument('--allow-running-insecure-content')
-    options.add_argument("--disable-extensions")
-    options.add_argument("--proxy-server='direct://'")
-    options.add_argument("--proxy-bypass-list=*")
-    options.add_argument("--start-maximized")
-    options.add_argument('--disable-gpu')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--headless')
+
+    # Set the custom User-Agent
+    my_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0"
+    options.add_argument(f"--user-agent={my_user_agent}")
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    # disable javascript
+    options.add_argument("--disable-javascript")
+
+    driver = webdriver.Chrome(options=options)
 
     # driver = webdriver.Remote(
     #     command_executor=SELENIUM_BASEURL,
     #     options=options
     # )
 
-    driver = webdriver.Chrome(options=options)
     return driver
 
 
@@ -60,13 +56,14 @@ def get_comments(product_name="echo dot 3rd gen"):
     # open each link and get the comments
     for i, href in enumerate(hrefs):
 
-        th = threading.Thread(target=single_scrape, args=(
-            init_driver(), href, all_comments))
+        th = threading.Thread(target=single_scrape, args=(href, all_comments))
         jobs.append(th)
         th.start()
 
     for job in jobs:
         job.join()
+
+    driver.quit()
 
     return {
         "comments": all_comments,
@@ -75,7 +72,9 @@ def get_comments(product_name="echo dot 3rd gen"):
     }
 
 
-def single_scrape(driver, url, ALL_COMMENTS):
+def single_scrape(url, ALL_COMMENTS):
+    driver = init_driver()
+
     driver.get(url)
 
     prev_height = -1
@@ -106,3 +105,5 @@ def single_scrape(driver, url, ALL_COMMENTS):
     for comment in comments:
         if comment.text.strip() != "":
             ALL_COMMENTS.append(comment.text)
+
+    driver.quit()

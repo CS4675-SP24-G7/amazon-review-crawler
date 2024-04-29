@@ -11,7 +11,7 @@ class Firebase:
 
         cred = firebase_admin.credentials.Certificate("cred/firebase_key.json")
         firebase_admin.initialize_app(cred, {
-            'databaseURL': 'https://cs4675-cpfs-default-rtdb.firebaseio.com/'
+            'databaseURL': 'https://cpfs-7f2c6-default-rtdb.firebaseio.com/'
         })
         self.ref = db.reference("/")
 

@@ -8,11 +8,6 @@ from src.url_extractor import *
 from src.Shared import Status, Review_Type
 import src.firebase as firebase
 import threading
-import random
-# fake user agents
-from fake_useragent import UserAgent
-# import beautifulsoup
-from bs4 import BeautifulSoup
 # import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -20,6 +15,7 @@ import threading
 
 
 extractor = selectorlib.Extractor.from_yaml_file('./src/selectors.yml')
+SELENIUM_BASEURL = "http://172.17.0.1:4444/wd/hub"
 
 user_agent_list = [
     {"ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.3", "pct": 32.54},
@@ -41,17 +37,22 @@ def to_json(data, status=200):
 
 
 def init_driver():
-    chrome_options = webdriver.ChromeOptions()
+    options = webdriver.ChromeOptions()
 
     # Set the custom User-Agent
     my_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0"
-    chrome_options.add_argument(f"--user-agent={my_user_agent}")
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
+    options.add_argument(f"--user-agent={my_user_agent}")
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
     # disable javascript
-    chrome_options.add_argument("--disable-javascript")
+    options.add_argument("--disable-javascript")
 
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(options=options)
+
+    # driver = webdriver.Remote(
+    #     command_executor=SELENIUM_BASEURL,
+    #     options=options
+    # )
 
     return driver
 
@@ -65,6 +66,8 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
 
     driver.get("https://amazon.com")
     driver.implicitly_wait(10)
+
+    driver.quit()
 
     TEMP = {
         "ibsn": urls[0].IBSN,
@@ -85,15 +88,13 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
 
     jobs = []
 
-    th = threading.Thread(target=first_page_scrape, args=(
-        init_driver(), composed_url, TEMP))
+    th = threading.Thread(target=first_page_scrape, args=(composed_url, TEMP))
     jobs.append(th)
     th.start()
 
     for review_type in Review_Type:
         composed_url = f"{original_url}?filterByStar={review_type.name.lower()}"
-        th = threading.Thread(target=single_scrape, args=(
-            init_driver(), composed_url, TEMP))
+        th = threading.Thread(target=single_scrape, args=(composed_url, TEMP))
         jobs.append(th)
         th.start()
 
@@ -122,7 +123,8 @@ def multi_threaded_scrape(urls, Firebase: firebase.Firebase):
     return TEMP
 
 
-def first_page_scrape(driver, composed_url, TEMP):
+def first_page_scrape(composed_url, TEMP):
+    driver = init_driver()
     while True:
         driver.get(composed_url)
 
@@ -184,9 +186,11 @@ def first_page_scrape(driver, composed_url, TEMP):
 
         # extract href attribute
         composed_url = next_page.get_attribute('href')
+    driver.quit()
 
 
-def single_scrape(driver, composed_url, TEMP):
+def single_scrape(composed_url, TEMP):
+    driver = init_driver()
     while True:
         driver.get(composed_url)
 
@@ -238,3 +242,4 @@ def single_scrape(driver, composed_url, TEMP):
 
         # extract href attribute
         composed_url = next_page.get_attribute('href')
+    driver.quit()

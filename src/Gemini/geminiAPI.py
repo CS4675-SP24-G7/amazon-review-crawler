@@ -27,15 +27,19 @@ and reason is a string, explains why buying_decision is made.
 GENERATE_SUMMARY = """
 Make a summary from the provided reviews data. 
 Condition 1: Give me a summary of no more than 10 sentences.
-Condition 2: On a scale of 0 to 5, give me the average rating of the reviews. Where 0 is the worst and 5 is the best.
+Condition 2: Using the original given Amazon Rating with the filtered review data. 
+On a scale of 0 to 5, give me the average rating of the reviews. 
+Where 0 is the worst and 5 is the best.
 Condition 3: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
 
 GENERATE_REDDIT_SUMMARY = """
-Make a summary from the provided reviews data. 
-Condition 1: Give me a summary of no more than 10 sentences.
-Condition 2: On a scale of 0 to 5, give me the average rating of the reviews. Where 0 is the worst and 5 is the best.
+Make a summary from the provided reviews data. Only evaluate if the data is rellated to the product. Otherwise, return the base json model.
+Condition 1: Give me a summary of no more than 10 sentences. 
+Condition 2: Using the original given Amazon Rating with the Reddit review data. 
+On a scale of 0 to 5, give me the average rating of the reviews. 
+Where 0 is the worst and 5 is the best.
 Condition 3: No markdown, no HTML, no special characters.
 Only use the provided resources.
 """
@@ -48,7 +52,7 @@ Only use the provided resources.
 """
 
 GENERATE_DECISION = """
-Make a buying decision from the provided reviews data.
+Make a buying decision from the provided original amazon rating, filted reviews data.
 Condition 1: The decision should be a boolean (true means should buy, false means should not buy).
 Condition 2: The decision should be supported by a reason.
 Condition 3: No markdown, no HTML, no special characters.
@@ -96,7 +100,7 @@ def init_gemini(used_time):
     return model
 
 
-def gemini_summary(data, Firebase):
+def gemini_summary(data, amazon_original_rating, Firebase):
 
     key_used_time = update_key(Firebase)
 
@@ -104,7 +108,20 @@ def gemini_summary(data, Firebase):
 
     convo = model.start_chat(history=[])
     convo.send_message(
-        f"{GENERATE_SUMMARY}\n{JSON_MODEL_SUMMARY}\nDATA: {data}")
+        f"{GENERATE_SUMMARY}\n{JSON_MODEL_SUMMARY}\nAmazon Original Rating: {amazon_original_rating}\nDATA: {data}")
+    # print(convo.last.text)
+    return convo.last.text
+
+
+def gemini_reddit_summary(data, product_name, amazon_original_rating, Firebase):
+
+    key_used_time = update_key(Firebase)
+
+    model = init_gemini(key_used_time)
+
+    convo = model.start_chat(history=[])
+    convo.send_message(
+        f"{GENERATE_REDDIT_SUMMARY}\nProduct Name: {product_name}\n{JSON_MODEL_SUMMARY}\nAmazon Original Rating: {amazon_original_rating}\nDATA: {data}")
     # print(convo.last.text)
     return convo.last.text
 
@@ -121,7 +138,7 @@ def gemini_a_d(data, Firebase):
     return convo.last.text
 
 
-def gemini_decision(data, Firebase):
+def gemini_decision(data, amazon_original_rating, Firebase):
 
     key_used_time = update_key(Firebase)
 
@@ -129,7 +146,7 @@ def gemini_decision(data, Firebase):
 
     convo = model.start_chat(history=[])
     convo.send_message(
-        f"{GENERATE_DECISION}\n{JSON_MODEL_DECISION}\nDATA: {data}")
+        f"{GENERATE_DECISION}\n{JSON_MODEL_DECISION}\nAmazon Original Rating: {amazon_original_rating}\nDATA: {data}")
     # print(convo.last.text)
     return convo.last.text
 
