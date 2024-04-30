@@ -8,6 +8,9 @@ from src.FilterReview.ReviewFilter import *
 from src.Gemini.geminiAPI import *
 from src.reddit import runner as reddit
 from flask_cors import CORS
+import chromedriver_autoinstaller
+
+chromedriver_autoinstaller.install()
 
 app = Flask(__name__)
 CORS(app, resources={r'/*': {'origins': '*'}})
